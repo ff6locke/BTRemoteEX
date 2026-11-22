@@ -9,6 +9,7 @@ import android.os.*
 import android.view.MotionEvent
 import android.view.View
 import android.widget.*
+import java.util.concurrent.Executor
 import kotlin.math.roundToInt
 
 class MainActivity : Activity() {
@@ -58,7 +59,7 @@ class MainActivity : Activity() {
      hid=proxy as BluetoothHidDevice
      val desc=intArrayOf(0x05,0x01,0x09,0x02,0xA1,0x01,0x09,0x01,0xA1,0x00,0x05,0x09,0x19,0x01,0x29,0x05,0x15,0x00,0x25,0x01,0x95,0x05,0x75,0x01,0x81,0x02,0x95,0x01,0x75,0x03,0x81,0x01,0x05,0x01,0x09,0x30,0x09,0x31,0x09,0x38,0x15,0x81,0x25,0x7F,0x75,0x08,0x95,0x03,0x81,0x06,0xC0,0xC0).map{it.toByte()}.toByteArray()
      val sdp=BluetoothHidDeviceAppSdpSettings("BTRemoteEX","Air Mouse","Android",BluetoothHidDevice.SUBCLASS1_MOUSE,desc)
-     hid?.registerApp(sdp,null,null,handler,cb)
+     hid?.registerApp(sdp,null,null,Executor { command -> handler.post(command) },cb)
      runOnUiThread { status.text="HID registered. Pair BTRemoteEX from GX1 Bluetooth settings." }
     }
     override fun onServiceDisconnected(profile:Int) { hid=null; registered=false; update() }
