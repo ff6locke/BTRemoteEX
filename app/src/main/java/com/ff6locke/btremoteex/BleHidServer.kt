@@ -24,9 +24,6 @@ class BleHidServer(
         private val BATTERY = UUID.fromString("0000180f-0000-1000-8000-00805f9b34fb")
         private val BATTERY_LEVEL = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
         private val DEVICE_INFO = UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb")
-        private val GAP = UUID.fromString("00001800-0000-1000-8000-00805f9b34fb")
-        private val DEVICE_NAME = UUID.fromString("00002a00-0000-1000-8000-00805f9b34fb")
-        private val APPEARANCE = UUID.fromString("00002a01-0000-1000-8000-00805f9b34fb")
         private val CCCD = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
         private val REPORT_REF = UUID.fromString("00002908-0000-1000-8000-00805f9b34fb")
 
@@ -54,7 +51,6 @@ class BleHidServer(
     private var serviceReady = false
     private var batteryService: BluetoothGattService? = null
     private var deviceInfoService: BluetoothGattService? = null
-    private var gapService: BluetoothGattService? = null
     private var advertiseCallback: AdvertiseCallback? = null
 
     private fun characteristic(uuid: UUID, properties: Int, permissions: Int, value: ByteArray? = null) =
@@ -99,11 +95,6 @@ class BleHidServer(
             }
             deviceInfoService = BluetoothGattService(DEVICE_INFO, BluetoothGattService.SERVICE_TYPE_PRIMARY).apply {
                 addCharacteristic(characteristic(PNP_ID, BluetoothGattCharacteristic.PROPERTY_READ, BluetoothGattCharacteristic.PERMISSION_READ, byteArrayOf(0x02,0x6b,0x1d,0x01,0x00,0x01,0x00)))
-            }
-            gapService = BluetoothGattService(GAP, BluetoothGattService.SERVICE_TYPE_PRIMARY).apply {
-                addCharacteristic(characteristic(DEVICE_NAME, BluetoothGattCharacteristic.PROPERTY_READ, BluetoothGattCharacteristic.PERMISSION_READ, (a.name ?: "BTRemoteEX").toByteArray(Charsets.UTF_8)))
-                // Bluetooth Appearance 0x03C1 = Keyboard (little-endian).
-                addCharacteristic(characteristic(APPEARANCE, BluetoothGattCharacteristic.PROPERTY_READ, BluetoothGattCharacteristic.PERMISSION_READ, byteArrayOf(0xC1.toByte(), 0x03)))
             }
             advertiser = a.bluetoothLeAdvertiser
             serviceReady = false
@@ -162,9 +153,13 @@ class BleHidServer(
             }
             when (service.uuid) {
                 HID -> batteryService?.let { server?.addService(it) }
-                BATTERY -> deviceInfoService?.let { server?.addService(it) }
-                DEVICE_INFO -> gapService?.let { server?.addService(it) }
-                GAP -> {
+                BATTERY -> {
+                    val next = deviceInfoService
+                    if (next == null || server?.addService(next) != true) {
+                        status("Could not add BLE device information service")
+                    }
+                }
+                DEVICE_INFO -> {
                     serviceReady = true
                     beginAdvertising()
                 }
@@ -238,7 +233,6 @@ class BleHidServer(
         serviceReady = false
         batteryService = null
         deviceInfoService = null
-        gapService = null
         advertiseCallback = null
     }
 }
