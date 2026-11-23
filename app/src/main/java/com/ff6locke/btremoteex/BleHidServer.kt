@@ -120,8 +120,14 @@ class BleHidServer(
                 .setConnectable(true)
                 .setTimeout(0)
                 .build()
+            // Advertise the standard BLE HID keyboard appearance. Keep the
+            // primary packet focused on HID discovery and put the device name
+            // in the scan response so hosts can read it after scanning.
             val data = AdvertiseData.Builder()
                 .addServiceUuid(ParcelUuid(HID))
+                .setAppearance(0x03C1) // Keyboard
+                .build()
+            val scanResponse = AdvertiseData.Builder()
                 .setIncludeDeviceName(true)
                 .build()
             advertiseCallback = object : AdvertiseCallback() {
@@ -132,7 +138,7 @@ class BleHidServer(
                     status("BLE advertising failed (code $errorCode)")
                 }
             }
-            advertiseCallback?.let { adv.startAdvertising(settings, data, it) }
+            advertiseCallback?.let { adv.startAdvertising(settings, data, scanResponse, it) }
         } catch (e: SecurityException) {
             status("BLE advertising permission denied")
         } catch (e: Exception) {
