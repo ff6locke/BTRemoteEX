@@ -105,8 +105,14 @@ class MainActivity : Activity() {
   airPanel.addView(TextView(this).apply{text="AIR MOUSE MODE";textSize=20f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(12),0,dp(12))})
   airPanel.addView(TextView(this).apply{text="Move your phone gently to move the pointer. Keep the phone level, then use the click buttons.";textSize=15f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(dp(10),dp(8),dp(10),dp(16))})
   airPanel.addView(TextView(this).apply{text="Tap anywhere: left-click  •  Hold 0.5 sec anywhere: right-click";textSize=13f;setTextColor(android.graphics.Color.LTGRAY);gravity=android.view.Gravity.CENTER;setPadding(dp(8),dp(10),dp(8),dp(10))})
+  val airSystemKeys=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER}
+  fun airSystemButton(label:String,icon:String,usage:Int)=Button(this).apply{text="$icon  $label";textSize=13f;isAllCaps=false;minHeight=dp(48);setTextColor(android.graphics.Color.WHITE);setOnClickListener{consumer(usage)}}
+  airSystemKeys.addView(airSystemButton("BACK","↶",0x0224),LinearLayout.LayoutParams(0,dp(50),1f).apply{rightMargin=dp(3)})
+  airSystemKeys.addView(airSystemButton("HOME","⌂",0x0223),LinearLayout.LayoutParams(0,dp(50),1f).apply{leftMargin=dp(2);rightMargin=dp(2)})
+  airSystemKeys.addView(airSystemButton("MENU","☰",0x0040),LinearLayout.LayoutParams(0,dp(50),1f).apply{leftMargin=dp(3)})
+  airPanel.addView(airSystemKeys,LinearLayout.LayoutParams(-1,dp(52)).apply{topMargin=dp(8)})
   val recenterButton=Button(this).apply{text="Re-centre";textSize=15f;setOnClickListener{lastGyroTime=0L;Toast.makeText(this@MainActivity,"Air mouse re-centred",Toast.LENGTH_SHORT).show()}}
-  airPanel.addView(recenterButton,LinearLayout.LayoutParams(-1,dp(48)).apply{topMargin=dp(8)})
+  airPanel.addView(recenterButton,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(4)})
   var airRightClickFired=false
   val airRightClickTask=Runnable{airRightClickFired=true;click(2)}
   val airGestureListener=View.OnTouchListener{_,event->when(event.actionMasked){
@@ -116,7 +122,7 @@ class MainActivity : Activity() {
    else->true
   }}
   fun attachAirGestures(view:View){
-   if(view===recenterButton)return
+   if(view===recenterButton || view is Button)return
    view.isClickable=true
    view.setOnTouchListener(airGestureListener)
    if(view is android.view.ViewGroup){for(i in 0 until view.childCount)attachAirGestures(view.getChildAt(i))}
