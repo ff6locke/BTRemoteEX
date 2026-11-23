@@ -300,7 +300,7 @@ class MainActivity : Activity() {
      // Consumer controls: report 3, 16-bit usage (Back, Home, Menu).
      0x05,0x0C,0x09,0x01,0xA1,0x01,0x85,0x03,0x15,0x00,0x26,0xFF,0x03,0x19,0x00,0x2A,0xFF,0x03,0x75,0x10,0x95,0x01,0x81,0x00,0xC0
     ).map{it.toByte()}.toByteArray()
-    val sdp=BluetoothHidDeviceAppSdpSettings("BTRemoteEX","Air Mouse + Keyboard","Android",BluetoothHidDevice.SUBCLASS1_MOUSE,descriptor)
+    val sdp=BluetoothHidDeviceAppSdpSettings("BTRemoteEX","Air Mouse + Keyboard","Android",BluetoothHidDevice.SUBCLASS1_COMBO,descriptor)
     val accepted=hid?.registerApp(sdp,null,null,Executor{command->handler.post(command)},cb)?:false
     runOnUiThread{status.text=if(accepted)"HID ready — reconnecting to paired GX1…" else "Could not register Bluetooth HID"}
     if(accepted){
