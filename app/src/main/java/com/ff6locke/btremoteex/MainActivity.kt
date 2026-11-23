@@ -104,20 +104,24 @@ class MainActivity : Activity() {
   airPanel=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER}
   airPanel.addView(TextView(this).apply{text="AIR MOUSE MODE";textSize=20f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(12),0,dp(12))})
   airPanel.addView(TextView(this).apply{text="Move your phone gently to move the pointer. Keep the phone level, then use the click buttons.";textSize=15f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(dp(10),dp(8),dp(10),dp(16))})
-  val mouseButtons=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
-  val airClick=Button(this).apply{text="CLICK  •  hold for right-click";textSize=14f;isAllCaps=false}
-  var rightClickFired=false
-  val rightClickTask=Runnable{rightClickFired=true;click(2)}
-  airClick.setOnTouchListener{_,event->when(event.actionMasked){
-   MotionEvent.ACTION_DOWN->{rightClickFired=false;handler.postDelayed(rightClickTask,500);true}
-   MotionEvent.ACTION_UP->{handler.removeCallbacks(rightClickTask);if(!rightClickFired)click(1);true}
-   MotionEvent.ACTION_CANCEL->{handler.removeCallbacks(rightClickTask);true}
+  airPanel.addView(TextView(this).apply{text="Tap anywhere: left-click  •  Hold 0.5 sec anywhere: right-click";textSize=13f;setTextColor(android.graphics.Color.LTGRAY);gravity=android.view.Gravity.CENTER;setPadding(dp(8),dp(10),dp(8),dp(10))})
+  val recenterButton=Button(this).apply{text="Re-centre";textSize=15f;setOnClickListener{lastGyroTime=0L;Toast.makeText(this@MainActivity,"Air mouse re-centred",Toast.LENGTH_SHORT).show()}}
+  airPanel.addView(recenterButton,LinearLayout.LayoutParams(-1,dp(48)).apply{topMargin=dp(8)})
+  var airRightClickFired=false
+  val airRightClickTask=Runnable{airRightClickFired=true;click(2)}
+  val airGestureListener=View.OnTouchListener{_,event->when(event.actionMasked){
+   MotionEvent.ACTION_DOWN->{airRightClickFired=false;handler.postDelayed(airRightClickTask,500);true}
+   MotionEvent.ACTION_UP->{handler.removeCallbacks(airRightClickTask);if(!airRightClickFired)click(1);true}
+   MotionEvent.ACTION_CANCEL->{handler.removeCallbacks(airRightClickTask);true}
    else->true
   }}
-  mouseButtons.addView(airClick,LinearLayout.LayoutParams(-1,dp(62)))
-  airPanel.addView(mouseButtons)
-  airPanel.addView(TextView(this).apply{text="Tap once: left-click  •  Hold 0.5 sec: right-click";textSize=12f;setTextColor(android.graphics.Color.LTGRAY);gravity=android.view.Gravity.CENTER;setPadding(0,dp(4),0,0)})
-  airPanel.addView(Button(this).apply{text="Re-centre";textSize=15f;setOnClickListener{lastGyroTime=0L;Toast.makeText(this@MainActivity,"Air mouse re-centred",Toast.LENGTH_SHORT).show()}},LinearLayout.LayoutParams(-1,dp(48)).apply{topMargin=dp(8)})
+  fun attachAirGestures(view:View){
+   if(view===recenterButton)return
+   view.isClickable=true
+   view.setOnTouchListener(airGestureListener)
+   if(view is android.view.ViewGroup){for(i in 0 until view.childCount)attachAirGestures(view.getChildAt(i))}
+  }
+  attachAirGestures(airPanel)
   tvPanel=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER;setPadding(0,dp(2),0,dp(2))}
   tvPanel.addView(TextView(this).apply{text="TV D-PAD MODE";textSize=16f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(2),0,dp(4))},LinearLayout.LayoutParams(-1,dp(26)))
   fun padButton(label:String,usage:Int):Button=Button(this).apply{
