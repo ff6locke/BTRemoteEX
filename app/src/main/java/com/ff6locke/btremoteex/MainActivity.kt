@@ -63,13 +63,16 @@ class MainActivity : Activity() {
  private var connected:BluetoothDevice?=null
  private var registered=false
  private var profileRequested=false
+ private var discoverabilityRequested=false
+ private var discoverabilityActive=false
+ private val discoverableRequestCode=24
  private val hidPrefs by lazy { getSharedPreferences("hid_connection",Context.MODE_PRIVATE) }
  private val btStateReceiver=object:android.content.BroadcastReceiver(){
   override fun onReceive(context:Context?,intent:Intent?){
    if(intent?.action!=BluetoothAdapter.ACTION_STATE_CHANGED)return
    when(intent.getIntExtra(BluetoothAdapter.EXTRA_STATE,BluetoothAdapter.ERROR)){
     BluetoothAdapter.STATE_OFF->{hid=null;connected=null;registered=false;profileRequested=false;runOnUiThread{status.text="Bluetooth is off — turn it on to reconnect"}}
-    BluetoothAdapter.STATE_ON->{handler.postDelayed({if(adapter.isEnabled)startHid()},1200)}
+    BluetoothAdapter.STATE_ON->{discoverabilityRequested=false;discoverabilityActive=false;handler.postDelayed({if(adapter.isEnabled)startHid()},1200)}
    }
   }
  }
@@ -260,6 +263,13 @@ class MainActivity : Activity() {
   if(Build.VERSION.SDK_INT<28){status.text="Android 9+ required";return}
   if(Build.VERSION.SDK_INT>=31&&(checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED||checkSelfPermission(Manifest.permission.BLUETOOTH_ADVERTISE)!=PackageManager.PERMISSION_GRANTED)){requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT,Manifest.permission.BLUETOOTH_ADVERTISE),23);return}
   if(!adapter.isEnabled){status.text="Turn on phone Bluetooth first";return}
+  if(!discoverabilityRequested){
+   discoverabilityRequested=true
+   try{
+    val discoverable=Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE).putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION,300)
+    startActivityForResult(discoverable,discoverableRequestCode)
+   }catch(e:Exception){discoverabilityRequested=false;status.text="Could not enable Bluetooth visibility: "+(e.message?:"unknown error")}
+  }
   try{val keepAlive=Intent(this,HidKeepAliveService::class.java).setAction(HidKeepAliveService.ACTION_START);if(Build.VERSION.SDK_INT>=26)startForegroundService(keepAlive)else startService(keepAlive)}catch(e:Exception){status.text="Could not start Bluetooth background service: "+(e.message?:"unknown error");return}
   if(profileRequested)return
   profileRequested=true
@@ -295,6 +305,7 @@ class MainActivity : Activity() {
    override fun onServiceDisconnected(profile:Int){hid=null;registered=false;profileRequested=false;update()}
   },BluetoothProfile.HID_DEVICE)}catch(e:SecurityException){profileRequested=false;status.text="Bluetooth permissions denied"}
  }
+ override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){super.onActivityResult(requestCode,resultCode,data);if(requestCode==discoverableRequestCode){discoverabilityActive=resultCode>0;runOnUiThread{status.text=if(discoverabilityActive)"Visible to Bluetooth devices for 5 minutes — registering HID…" else "Bluetooth visibility not enabled — HID registration will continue"}}}
  override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==23&&grantResults.isNotEmpty()&&grantResults.all{it==PackageManager.PERMISSION_GRANTED})startHid()else if(requestCode==23)status.text="Bluetooth permissions are needed for HID"}
  private fun mouse(b:Int,x:Int,y:Int,w:Int){val h=hid?:return;val d=connected?:return;if(!registered)return;try{h.sendReport(d,1,byteArrayOf(b.toByte(),x.coerceIn(-127,127).toByte(),y.coerceIn(-127,127).toByte(),w.toByte()))}catch(_:Exception){}}
  private fun click(b:Int){mouse(b,0,0,0);handler.postDelayed({mouse(0,0,0,0)},50)}
