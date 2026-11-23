@@ -60,6 +60,7 @@ class MainActivity : Activity() {
   }
  }
  private var hid:BluetoothHidDevice?=null
+ private var bleHid:BleHidServer?=null
  private var connected:BluetoothDevice?=null
  private var registered=false
  private var profileRequested=false
@@ -94,7 +95,7 @@ class MainActivity : Activity() {
   ui()
   handler.postDelayed({startHid()},500)
  }
- override fun onDestroy(){try{unregisterReceiver(btStateReceiver)}catch(_:Exception){};super.onDestroy()}
+ override fun onDestroy(){try{unregisterReceiver(btStateReceiver)}catch(_:Exception){};bleHid?.stop();super.onDestroy()}
  private fun ui(){
   val density=resources.displayMetrics.density
   fun dp(v:Int)=(v*density).roundToInt()
@@ -106,7 +107,8 @@ class MainActivity : Activity() {
   root.addView(title,LinearLayout.LayoutParams(-1,dp(34)))
   status=TextView(this).apply{text="Ready";textSize=13f;setTextColor(android.graphics.Color.LTGRAY);gravity=android.view.Gravity.CENTER;setPadding(0,0,0,dp(2))}
   root.addView(status,LinearLayout.LayoutParams(-1,dp(24)))
-  root.addView(Button(this).apply{text="Connect Bluetooth HID";textSize=15f;setOnClickListener{retryHid()}},LinearLayout.LayoutParams(-1,dp(42)))
+  root.addView(Button(this).apply{text="Connect Classic Bluetooth HID";textSize=14f;isAllCaps=false;setOnClickListener{retryHid()}},LinearLayout.LayoutParams(-1,dp(40)))
+  root.addView(Button(this).apply{text="Start BLE HID (experimental)";textSize=14f;isAllCaps=false;setOnClickListener{startBleHid()}},LinearLayout.LayoutParams(-1,dp(40)).apply{topMargin=dp(3)})
   modeList=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(0,dp(3),0,dp(3))}
   modeButtons=mutableListOf()
   val modeNames=listOf("TV D-pad","Air Mouse","Mouse Touchpad","Keyboard")
@@ -260,6 +262,13 @@ class MainActivity : Activity() {
  }
  override fun onPause(){super.onPause();sensorManager?.unregisterListener(gyroListener);lastGyroTime=0L}
  override fun onResume(){super.onResume();if(airMode&&gyro!=null)sensorManager?.registerListener(gyroListener,gyro,SensorManager.SENSOR_DELAY_GAME)}
+ private fun startBleHid(){
+  if(Build.VERSION.SDK_INT>=31&&checkSelfPermission(Manifest.permission.BLUETOOTH_ADVERTISE)!=PackageManager.PERMISSION_GRANTED){requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_ADVERTISE,Manifest.permission.BLUETOOTH_CONNECT),23);status.text="Allow Bluetooth permissions, then tap Start BLE HID again";return}
+  if(bleHid?.isConnected==true){status.text="BLE HID is already connected";return}
+  bleHid?.stop()
+  bleHid=BleHidServer(this){message->runOnUiThread{status.text=message}}
+  bleHid?.start()
+ }
  private fun retryHid(){
   if(!adapter.isEnabled){status.text="Turn on phone Bluetooth first";return}
   try{hid?.let{adapter.closeProfileProxy(BluetoothProfile.HID_DEVICE,it)}}catch(_:Exception){}
@@ -323,12 +332,12 @@ class MainActivity : Activity() {
  }
  override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){super.onActivityResult(requestCode,resultCode,data);if(requestCode==discoverableRequestCode){discoverabilityActive=resultCode>0;runOnUiThread{status.text=if(discoverabilityActive)"Visible to Bluetooth devices for $resultCode seconds — registering HID…" else "Bluetooth visibility was declined or unavailable — HID registration will continue"}}}
  override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==23&&grantResults.isNotEmpty()&&grantResults.all{it==PackageManager.PERMISSION_GRANTED})startHid()else if(requestCode==23)status.text="Bluetooth permissions are needed for HID"}
- private fun mouse(b:Int,x:Int,y:Int,w:Int){val h=hid?:return;val d=connected?:return;if(!registered)return;try{h.sendReport(d,1,byteArrayOf(b.toByte(),x.coerceIn(-127,127).toByte(),y.coerceIn(-127,127).toByte(),w.toByte()))}catch(_:Exception){}}
+ private fun mouse(b:Int,x:Int,y:Int,w:Int){val report=byteArrayOf(b.toByte(),x.coerceIn(-127,127).toByte(),y.coerceIn(-127,127).toByte(),w.toByte());if(bleHid?.isConnected==true){bleHid?.sendMouse(report);return};val h=hid?:return;val d=connected?:return;if(!registered)return;try{h.sendReport(d,1,report)}catch(_:Exception){}}
  private fun click(b:Int){mouse(b,0,0,0);handler.postDelayed({mouse(0,0,0,0)},50)}
- private fun key(mod:Int,k:Int){val h=hid?:return;val d=connected?:return;if(!registered)return;try{h.sendReport(d,2,byteArrayOf(mod.toByte(),0,k.toByte(),0,0,0,0,0));handler.postDelayed({try{h.sendReport(d,2,ByteArray(8))}catch(_:Exception){}},120)}catch(_:Exception){}}
- private fun consumer(usage:Int){val h=hid?:return;val d=connected?:return;if(!registered)return;try{h.sendReport(d,3,byteArrayOf((usage and 0xFF).toByte(),((usage shr 8) and 0xFF).toByte()));handler.postDelayed({try{h.sendReport(d,3,byteArrayOf(0,0))}catch(_:Exception){}},120)}catch(_:Exception){}}
+ private fun key(mod:Int,k:Int){val report=byteArrayOf(mod.toByte(),0,k.toByte(),0,0,0,0,0);if(bleHid?.isConnected==true){bleHid?.sendKeyboard(report);handler.postDelayed({bleHid?.sendKeyboard(ByteArray(8))},120);return};val h=hid?:return;val d=connected?:return;if(!registered)return;try{h.sendReport(d,2,report);handler.postDelayed({try{h.sendReport(d,2,ByteArray(8))}catch(_:Exception){}},120)}catch(_:Exception){}}
+ private fun consumer(usage:Int){val report=byteArrayOf((usage and 0xFF).toByte(),((usage shr 8) and 0xFF).toByte());if(bleHid?.isConnected==true){bleHid?.sendConsumer(report);handler.postDelayed({bleHid?.sendConsumer(byteArrayOf(0,0))},120);return};val h=hid?:return;val d=connected?:return;if(!registered)return;try{h.sendReport(d,3,report);handler.postDelayed({try{h.sendReport(d,3,byteArrayOf(0,0))}catch(_:Exception){}},120)}catch(_:Exception){}}
  private fun sendKeyboardChar(label:String){
-  if(!registered||connected==null){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return}
+  if(bleHid?.isConnected!=true&&(!registered||connected==null)){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return}
   val c=label.firstOrNull()?:return
   val mapped=ascii(c)?:return
   val shifted=if(c.isLetter())(capsOn xor shiftOn) else (mapped.first!=0||shiftOn)
