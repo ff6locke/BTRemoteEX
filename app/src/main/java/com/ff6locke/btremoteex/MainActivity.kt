@@ -188,6 +188,12 @@ class MainActivity : Activity() {
    tap={click(1)}
   }
   touchPanel.addView(touchSurface,LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(8);bottomMargin=dp(8)})
+  val touchSystemKeys=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER}
+  fun touchSystemButton(label:String,icon:String,usage:Int)=Button(this).apply{text="$icon  $label";textSize=13f;isAllCaps=false;minHeight=dp(46);setTextColor(android.graphics.Color.WHITE);setOnClickListener{consumer(usage)}}
+  touchSystemKeys.addView(touchSystemButton("BACK","↶",0x0224),LinearLayout.LayoutParams(0,dp(48),1f).apply{rightMargin=dp(3)})
+  touchSystemKeys.addView(touchSystemButton("HOME","⌂",0x0223),LinearLayout.LayoutParams(0,dp(48),1f).apply{leftMargin=dp(2);rightMargin=dp(2)})
+  touchSystemKeys.addView(touchSystemButton("MENU","☰",0x0040),LinearLayout.LayoutParams(0,dp(48),1f).apply{leftMargin=dp(3)})
+  touchPanel.addView(touchSystemKeys,LinearLayout.LayoutParams(-1,dp(50)).apply{topMargin=dp(4)})
   val touchClicks=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
   touchClicks.addView(Button(this).apply{text="LEFT CLICK";setOnClickListener{click(1)}},LinearLayout.LayoutParams(0,dp(48),1f).apply{rightMargin=dp(4)})
   touchClicks.addView(Button(this).apply{text="RIGHT CLICK";setOnClickListener{click(2)}},LinearLayout.LayoutParams(0,dp(48),1f).apply{leftMargin=dp(4)})
