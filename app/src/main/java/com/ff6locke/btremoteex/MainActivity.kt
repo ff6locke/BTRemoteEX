@@ -62,18 +62,35 @@ class MainActivity : Activity() {
  private var hid:BluetoothHidDevice?=null
  private var connected:BluetoothDevice?=null
  private var registered=false
+ private var profileRequested=false
+ private val hidPrefs by lazy { getSharedPreferences("hid_connection",Context.MODE_PRIVATE) }
+ private val btStateReceiver=object:android.content.BroadcastReceiver(){
+  override fun onReceive(context:Context?,intent:Intent?){
+   if(intent?.action!=BluetoothAdapter.ACTION_STATE_CHANGED)return
+   when(intent.getIntExtra(BluetoothAdapter.EXTRA_STATE,BluetoothAdapter.ERROR)){
+    BluetoothAdapter.STATE_OFF->{hid=null;connected=null;registered=false;profileRequested=false;runOnUiThread{status.text="Bluetooth is off — turn it on to reconnect"}}
+    BluetoothAdapter.STATE_ON->{handler.postDelayed({if(adapter.isEnabled)startHid()},1200)}
+   }
+  }
+ }
  private var sensitivity=1.4f
  private val handler=Handler(Looper.getMainLooper())
  private val adapter by lazy { (getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter }
  private val cb=object:BluetoothHidDevice.Callback(){
   override fun onAppStatusChanged(device:BluetoothDevice?,plugged:Boolean){registered=plugged;runOnUiThread{update()}}
   override fun onConnectionStateChanged(device:BluetoothDevice,state:Int){
-   if(state==BluetoothProfile.STATE_CONNECTED)connected=device
+   if(state==BluetoothProfile.STATE_CONNECTED){connected=device;if(device!=null)hidPrefs.edit().putString("host_address",device.address).apply()}
    if(state==BluetoothProfile.STATE_DISCONNECTED&&connected==device)connected=null
    runOnUiThread{update()}
   }
  }
- override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);ui()}
+ override fun onCreate(savedInstanceState:Bundle?){
+  super.onCreate(savedInstanceState)
+  val filter=android.content.IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
+  if(Build.VERSION.SDK_INT>=33)registerReceiver(btStateReceiver,filter,Context.RECEIVER_EXPORTED) else registerReceiver(btStateReceiver,filter)
+  ui()
+ }
+ override fun onDestroy(){try{unregisterReceiver(btStateReceiver)}catch(_:Exception){};super.onDestroy()}
  private fun ui(){
   val density=resources.displayMetrics.density
   fun dp(v:Int)=(v*density).roundToInt()
@@ -233,6 +250,8 @@ class MainActivity : Activity() {
   if(Build.VERSION.SDK_INT>=31&&(checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED||checkSelfPermission(Manifest.permission.BLUETOOTH_ADVERTISE)!=PackageManager.PERMISSION_GRANTED)){requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT,Manifest.permission.BLUETOOTH_ADVERTISE),23);return}
   if(!adapter.isEnabled){status.text="Turn on phone Bluetooth first";return}
   try{val keepAlive=Intent(this,HidKeepAliveService::class.java).setAction(HidKeepAliveService.ACTION_START);if(Build.VERSION.SDK_INT>=26)startForegroundService(keepAlive)else startService(keepAlive)}catch(e:Exception){status.text="Could not start Bluetooth background service: "+(e.message?:"unknown error");return}
+  if(profileRequested)return
+  profileRequested=true
   try{adapter.getProfileProxy(this,object:BluetoothProfile.ServiceListener{
    override fun onServiceConnected(profile:Int,proxy:BluetoothProfile){
     if(profile!=BluetoothProfile.HID_DEVICE)return
@@ -248,11 +267,22 @@ class MainActivity : Activity() {
      0x05,0x0C,0x09,0x01,0xA1,0x01,0x85,0x03,0x15,0x00,0x26,0xFF,0x03,0x19,0x00,0x2A,0xFF,0x03,0x75,0x10,0x95,0x01,0x81,0x00,0xC0
     ).map{it.toByte()}.toByteArray()
     val sdp=BluetoothHidDeviceAppSdpSettings("BTRemoteEX","Air Mouse + Keyboard","Android",BluetoothHidDevice.SUBCLASS1_MOUSE,descriptor)
-    hid?.registerApp(sdp,null,null,Executor{command->handler.post(command)},cb)
-    runOnUiThread{status.text="HID registered. Pair/connect from GX1 Bluetooth settings."}
+    val accepted=hid?.registerApp(sdp,null,null,Executor{command->handler.post(command)},cb)?:false
+    runOnUiThread{status.text=if(accepted)"HID ready — reconnecting to paired GX1…" else "Could not register Bluetooth HID"}
+    if(accepted){
+     handler.postDelayed({
+      try{
+       val address=hidPrefs.getString("host_address",null)
+       if(address!=null&&adapter.isEnabled){
+        val host=adapter.getRemoteDevice(address)
+        if(host.bondState==BluetoothDevice.BOND_BONDED)hid?.connect(host)
+       }
+      }catch(_:Exception){}
+     },1800)
+    }
    }
-   override fun onServiceDisconnected(profile:Int){hid=null;registered=false;update()}
-  },BluetoothProfile.HID_DEVICE)}catch(e:SecurityException){status.text="Bluetooth permissions denied"}
+   override fun onServiceDisconnected(profile:Int){hid=null;registered=false;profileRequested=false;update()}
+  },BluetoothProfile.HID_DEVICE)}catch(e:SecurityException){profileRequested=false;status.text="Bluetooth permissions denied"}
  }
  override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==23&&grantResults.isNotEmpty()&&grantResults.all{it==PackageManager.PERMISSION_GRANTED})startHid()else if(requestCode==23)status.text="Bluetooth permissions are needed for HID"}
  private fun mouse(b:Int,x:Int,y:Int,w:Int){val h=hid?:return;val d=connected?:return;if(!registered)return;try{h.sendReport(d,1,byteArrayOf(b.toByte(),x.coerceIn(-127,127).toByte(),y.coerceIn(-127,127).toByte(),w.toByte()))}catch(_:Exception){}}
