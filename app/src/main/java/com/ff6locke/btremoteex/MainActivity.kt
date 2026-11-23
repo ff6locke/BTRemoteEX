@@ -80,7 +80,7 @@ class MainActivity : Activity() {
  private val handler=Handler(Looper.getMainLooper())
  private val adapter by lazy { (getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter }
  private val cb=object:BluetoothHidDevice.Callback(){
-  override fun onAppStatusChanged(device:BluetoothDevice?,plugged:Boolean){registered=plugged;runOnUiThread{update()}}
+  override fun onAppStatusChanged(device:BluetoothDevice?,plugged:Boolean){registered=plugged;runOnUiThread{status.text=if(plugged)"HID registered — ready to pair" else "Android Bluetooth reports HID is not registered"}}
   override fun onConnectionStateChanged(device:BluetoothDevice,state:Int){
    if(state==BluetoothProfile.STATE_CONNECTED){connected=device;if(device!=null)hidPrefs.edit().putString("host_address",device.address).apply()}
    if(state==BluetoothProfile.STATE_DISCONNECTED&&connected==device)connected=null
@@ -301,10 +301,12 @@ class MainActivity : Activity() {
      0x05,0x0C,0x09,0x01,0xA1,0x01,0x85,0x03,0x15,0x00,0x26,0xFF,0x03,0x19,0x00,0x2A,0xFF,0x03,0x75,0x10,0x95,0x01,0x81,0x00,0xC0
     ).map{it.toByte()}.toByteArray()
     val sdp=BluetoothHidDeviceAppSdpSettings("BTRemoteEX","Air Mouse + Keyboard","Android",BluetoothHidDevice.SUBCLASS1_MOUSE,descriptor)
-    val accepted=hid?.registerApp(sdp,null,null,Executor{command->handler.post(command)},cb)?:false
-    runOnUiThread{status.text=if(accepted)"HID ready — reconnecting to paired GX1…" else "Could not register Bluetooth HID"}
-    if(accepted){
-     handler.postDelayed({
+    try{hid?.unregisterApp()}catch(_:Exception){}
+    handler.postDelayed({
+     val accepted=try{hid?.registerApp(sdp,null,null,Executor{command->handler.post(command)},cb)?:false}catch(e:Exception){runOnUiThread{status.text="HID registration error: "+(e.message?:"unknown")};false}
+     runOnUiThread{if(accepted)status.text="HID request sent — waiting for Android confirmation…" else status.text="Android rejected HID registration request"}
+     if(accepted){
+      handler.postDelayed({
       try{
        val address=hidPrefs.getString("host_address",null)
        if(address!=null&&adapter.isEnabled){
@@ -312,8 +314,9 @@ class MainActivity : Activity() {
         if(host.bondState==BluetoothDevice.BOND_BONDED)hid?.connect(host)
        }
       }catch(_:Exception){}
-     },1800)
-    }
+      },1800)
+     }
+    },700)
    }
    override fun onServiceDisconnected(profile:Int){hid=null;registered=false;profileRequested=false;update()}
   },BluetoothProfile.HID_DEVICE);if(!proxyRequested){profileRequested=false;status.text="Android HID service is unavailable on this phone"}}catch(e:SecurityException){profileRequested=false;status.text="Bluetooth permissions denied"}catch(e:Exception){profileRequested=false;status.text="Could not open Android HID service: "+(e.message?:"unknown error")}
