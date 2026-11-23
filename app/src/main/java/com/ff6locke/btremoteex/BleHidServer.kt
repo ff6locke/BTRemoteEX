@@ -156,14 +156,18 @@ class BleHidServer(
             }
         }
         override fun onConnectionStateChange(device: BluetoothDevice, statusCode: Int, newState: Int) {
-            isConnected = newState == BluetoothProfile.STATE_CONNECTED
+            isConnected = statusCode == BluetoothGatt.GATT_SUCCESS && newState == BluetoothProfile.STATE_CONNECTED
             if (isConnected) {
                 connectedDevice = device
                 status("BLE HID connected to ${device.name ?: "host"}")
             } else {
                 notifyEnabled.remove(device.address)
                 connectedDevice = null
-                status("BLE HID disconnected")
+                if (statusCode != BluetoothGatt.GATT_SUCCESS) {
+                    status("BLE GATT connection failed: status=$statusCode, state=$newState")
+                } else {
+                    status("BLE HID disconnected (state=$newState)")
+                }
             }
         }
         override fun onDescriptorWriteRequest(device: BluetoothDevice, requestId: Int, descriptor: BluetoothGattDescriptor, preparedWrite: Boolean, responseNeeded: Boolean, offset: Int, value: ByteArray) {
