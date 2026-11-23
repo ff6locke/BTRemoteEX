@@ -8,6 +8,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 
+// Foreground lifetime keeps the app process available while its HID profile is connected.
 class HidKeepAliveService : Service() {
  companion object {
   const val ACTION_START="com.ff6locke.btremoteex.action.START_HID_KEEPALIVE"
