@@ -344,8 +344,8 @@ class MainActivity : Activity() {
   val modifiers=(if(shifted)2 else 0) or (if(ctrlOn)1 else 0) or (if(altOn)4 else 0)
   key(modifiers,mapped.second)
  }
- private fun sendKeyboardUsage(usage:Int){if(!registered||connected==null){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return};val modifiers=(if(shiftOn)2 else 0) or (if(ctrlOn)1 else 0) or (if(altOn)4 else 0);key(modifiers,usage)}
- private fun sendText(s:String){if(!registered||connected==null){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return};var t=0L;s.forEach{c->val m=ascii(c);if(m!=null){handler.postDelayed({key(m.first,m.second)},t);t+=85}}}
+ private fun sendKeyboardUsage(usage:Int){if(bleHid?.isConnected!=true&&(!registered||connected==null)){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return};val modifiers=(if(shiftOn)2 else 0) or (if(ctrlOn)1 else 0) or (if(altOn)4 else 0);key(modifiers,usage)}
+ private fun sendText(s:String){if(bleHid?.isConnected!=true&&(!registered||connected==null)){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return};var t=0L;s.forEach{c->val m=ascii(c);if(m!=null){handler.postDelayed({key(m.first,m.second)},t);t+=85}}}
  private fun ascii(c:Char):Pair<Int,Int>?{val shift=2;return when(c){
   in 'a'..'z'->Pair(0,4+(c-'a'));in 'A'..'Z'->Pair(shift,4+(c-'A'));in '1'..'9'->Pair(0,0x1E+(c-'1'));'0'->Pair(0,0x27);' '->Pair(0,0x2C);'\n','\r'->Pair(0,0x28);'\t'->Pair(0,0x2B)
   '-'->Pair(0,0x2D);'_'->Pair(shift,0x2D);'='->Pair(0,0x2E);'+'->Pair(shift,0x2E);'['->Pair(0,0x2F);'{'->Pair(shift,0x2F);']'->Pair(0,0x30);'}'->Pair(shift,0x30);'\\'->Pair(0,0x31);'|'->Pair(shift,0x31);';'->Pair(0,0x33);':'->Pair(shift,0x33);'\''->Pair(0,0x34);'"'->Pair(shift,0x34);'`'->Pair(0,0x35);'~'->Pair(shift,0x35);','->Pair(0,0x36);'<'->Pair(shift,0x36);'.'->Pair(0,0x37);'>'->Pair(shift,0x37);'/'->Pair(0,0x38);'?'->Pair(shift,0x38)
