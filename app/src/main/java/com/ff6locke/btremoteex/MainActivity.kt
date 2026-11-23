@@ -20,6 +20,8 @@ class MainActivity : Activity() {
  private lateinit var speedLabel:TextView
  private var shiftOn=false
  private var capsOn=false
+ private var ctrlOn=false
+ private var altOn=false
  private lateinit var modeList:LinearLayout
  private lateinit var keyboardPanel:LinearLayout
  private lateinit var contentHost:FrameLayout
@@ -141,38 +143,15 @@ class MainActivity : Activity() {
   contentHost.addView(touchPanel,FrameLayout.LayoutParams(-1,-1))
   contentHost.addView(airPanel,FrameLayout.LayoutParams(-1,-1))
   keyboardPanel=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=android.view.Gravity.CENTER;visibility=View.GONE}
-  keyboardPanel.addView(TextView(this).apply{text="KEYBOARD MODE  •  Tap keys to send";textSize=16f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(3),0,dp(5))},LinearLayout.LayoutParams(-1,dp(30)))
-  fun keyButton(label:String, action:()->Unit, weight:Float=1f):Button=Button(this).apply{
-   text=label;textSize=if(label.length>1)11f else 16f;isAllCaps=false;minHeight=dp(42);setPadding(dp(1),0,dp(1),0)
-   setTextColor(android.graphics.Color.WHITE)
-   background=android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.RECTANGLE;cornerRadius=dp(6).toFloat();setColor(android.graphics.Color.rgb(35,65,105));setStroke(dp(1),android.graphics.Color.rgb(78,125,190))}
-   setOnClickListener{action()}
-  }
-  fun addKeyRow(keys:List<String>,height:Int=dp(48)){
-   val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER}
-   keys.forEachIndexed{index,label->
-    val button=keyButton(label,{sendKeyboardChar(label)})
-    row.addView(button,LinearLayout.LayoutParams(0,height,1f).apply{leftMargin=dp(2);rightMargin=dp(2)})
-   }
-   keyboardPanel.addView(row,LinearLayout.LayoutParams(-1,height).apply{topMargin=dp(2);bottomMargin=dp(2)})
-  }
-  addKeyRow(listOf("1","2","3","4","5","6","7","8","9","0"))
-  addKeyRow(listOf("q","w","e","r","t","y","u","i","o","p"))
-  addKeyRow(listOf("a","s","d","f","g","h","j","k","l"))
-  val third=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER}
-  third.addView(keyButton("Shift",{shiftOn=!shiftOn;Toast.makeText(this@MainActivity,if(shiftOn)"Shift on" else "Shift off",Toast.LENGTH_SHORT).show()}),LinearLayout.LayoutParams(0,dp(48),1.5f).apply{leftMargin=dp(2);rightMargin=dp(2)})
-  listOf("z","x","c","v","b","n","m").forEach{label->third.addView(keyButton(label,{sendKeyboardChar(label)}),LinearLayout.LayoutParams(0,dp(48),1f).apply{leftMargin=dp(1);rightMargin=dp(1)})}
-  third.addView(keyButton("⌫",{key(0,0x2A)}),LinearLayout.LayoutParams(0,dp(48),1.5f).apply{leftMargin=dp(2);rightMargin=dp(2)})
-  keyboardPanel.addView(third,LinearLayout.LayoutParams(-1,dp(50)).apply{topMargin=dp(2)})
-  val bottomKeys=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER}
-  bottomKeys.addView(keyButton("Caps",{capsOn=!capsOn;Toast.makeText(this@MainActivity,if(capsOn)"Caps Lock on" else "Caps Lock off",Toast.LENGTH_SHORT).show()}),LinearLayout.LayoutParams(0,dp(48),1.3f).apply{leftMargin=dp(2);rightMargin=dp(2)})
-  bottomKeys.addView(keyButton("123? ",{sendKeyboardChar("?")}),LinearLayout.LayoutParams(0,dp(48),1f).apply{leftMargin=dp(1);rightMargin=dp(1)})
-  bottomKeys.addView(keyButton("Space",{key(0,0x2C)}),LinearLayout.LayoutParams(0,dp(48),3f).apply{leftMargin=dp(1);rightMargin=dp(1)})
-  bottomKeys.addView(keyButton("Enter",{key(0,0x28)}),LinearLayout.LayoutParams(0,dp(48),1f).apply{leftMargin=dp(1);rightMargin=dp(1)})
-  keyboardPanel.addView(bottomKeys,LinearLayout.LayoutParams(-1,dp(50)).apply{topMargin=dp(2);bottomMargin=dp(2)})
-  val symbols=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER}
-  listOf("-","_","=","+","(",")","@","#","!","?").forEach{label->symbols.addView(keyButton(label,{sendKeyboardChar(label)}),LinearLayout.LayoutParams(0,dp(42),1f).apply{leftMargin=dp(1);rightMargin=dp(1)})}
-  keyboardPanel.addView(symbols,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(2)})
+  keyboardPanel.addView(TextView(this).apply{text="ENGLISH (US) • QWERTY";textSize=15f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(2),0,dp(3))},LinearLayout.LayoutParams(-1,dp(25)))
+  fun keyButton(label:String, action:()->Unit):Button=Button(this).apply{text=label;textSize=if(label.length>1)10f else 15f;isAllCaps=false;minHeight=dp(36);minimumHeight=dp(36);setPadding(dp(1),0,dp(1),0);setTextColor(android.graphics.Color.WHITE);background=android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.RECTANGLE;cornerRadius=dp(5).toFloat();setColor(android.graphics.Color.rgb(35,65,105));setStroke(dp(1),android.graphics.Color.rgb(78,125,190))};setOnClickListener{action()}}
+  fun addSpecialRow(keys:List<Pair<String,()->Unit>>,height:Int=dp(40)){val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER};keys.forEach{item->row.addView(keyButton(item.first,item.second),LinearLayout.LayoutParams(0,height,1f).apply{leftMargin=dp(1);rightMargin=dp(1)})};keyboardPanel.addView(row,LinearLayout.LayoutParams(-1,height).apply{topMargin=dp(1);bottomMargin=dp(1)})}
+  addSpecialRow(listOf("Esc" to {sendKeyboardUsage(0x29)},"F1" to {sendKeyboardUsage(0x3A)},"F2" to {sendKeyboardUsage(0x3B)},"F3" to {sendKeyboardUsage(0x3C)},"F4" to {sendKeyboardUsage(0x3D)},"F5" to {sendKeyboardUsage(0x3E)},"F6" to {sendKeyboardUsage(0x3F)},"F7" to {sendKeyboardUsage(0x40)},"F8" to {sendKeyboardUsage(0x41)}),dp(32))
+  addSpecialRow(listOf("~","1","2","3","4","5","6","7","8","9","0","-","=","⌫").map{label->label to {if(label=="⌫")sendKeyboardUsage(0x2A) else sendKeyboardChar(label)}})
+  addSpecialRow(listOf("Tab","q","w","e","r","t","y","u","i","o","p","[","]","\\").map{label->label to {if(label=="Tab")sendKeyboardUsage(0x2B) else sendKeyboardChar(label)}})
+  addSpecialRow(listOf("Caps","a","s","d","f","g","h","j","k","l",";","\'","Enter").map{label->label to {when(label){"Caps"->{capsOn=!capsOn;Toast.makeText(this@MainActivity,if(capsOn)"Caps Lock on" else "Caps Lock off",Toast.LENGTH_SHORT).show()};"Enter"->sendKeyboardUsage(0x28);else->sendKeyboardChar(label)}}})
+  addSpecialRow(listOf("Shift","z","x","c","v","b","n","m",",",".","/","Shift").map{label->label to {if(label=="Shift"){shiftOn=!shiftOn;Toast.makeText(this@MainActivity,if(shiftOn)"Shift on" else "Shift off",Toast.LENGTH_SHORT).show()}else sendKeyboardChar(label)}})
+  addSpecialRow(listOf("Ctrl" to {ctrlOn=!ctrlOn;Toast.makeText(this@MainActivity,if(ctrlOn)"Ctrl held" else "Ctrl released",Toast.LENGTH_SHORT).show()},"Win" to {sendKeyboardUsage(0xE3)},"Alt" to {altOn=!altOn;Toast.makeText(this@MainActivity,if(altOn)"Alt held" else "Alt released",Toast.LENGTH_SHORT).show()},"Space" to {sendKeyboardUsage(0x2C)},"Alt" to {altOn=!altOn;Toast.makeText(this@MainActivity,if(altOn)"Alt held" else "Alt released",Toast.LENGTH_SHORT).show()},"Ctrl" to {ctrlOn=!ctrlOn;Toast.makeText(this@MainActivity,if(ctrlOn)"Ctrl held" else "Ctrl released",Toast.LENGTH_SHORT).show()}),dp(40))
   keyboardPanel.setBackgroundColor(android.graphics.Color.rgb(5,15,34))
   // Add the keyboard panel to the same host as the other mode panels.
   contentHost.addView(keyboardPanel,FrameLayout.LayoutParams(-1,-1))
@@ -244,9 +223,11 @@ class MainActivity : Activity() {
   if(!registered||connected==null){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return}
   val c=label.firstOrNull()?:return
   val mapped=ascii(c)?:return
-  val shifted=if(c.isLetter())(c.isUpperCase() xor capsOn xor shiftOn) else (mapped.first!=0||shiftOn)
-  key(if(shifted)2 else 0,mapped.second)
+  val shifted=if(c.isLetter())(capsOn xor shiftOn) else (mapped.first!=0||shiftOn)
+  val modifiers=(if(shifted)2 else 0) or (if(ctrlOn)1 else 0) or (if(altOn)4 else 0)
+  key(modifiers,mapped.second)
  }
+ private fun sendKeyboardUsage(usage:Int){if(!registered||connected==null){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return};val modifiers=(if(shiftOn)2 else 0) or (if(ctrlOn)1 else 0) or (if(altOn)4 else 0);key(modifiers,usage)}
  private fun sendText(s:String){if(!registered||connected==null){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return};var t=0L;s.forEach{c->val m=ascii(c);if(m!=null){handler.postDelayed({key(m.first,m.second)},t);t+=85}}}
  private fun ascii(c:Char):Pair<Int,Int>?{val shift=2;return when(c){
   in 'a'..'z'->Pair(0,4+(c-'a'));in 'A'..'Z'->Pair(shift,4+(c-'A'));in '1'..'9'->Pair(0,0x1E+(c-'1'));'0'->Pair(0,0x27);' '->Pair(0,0x2C);'\n','\r'->Pair(0,0x28);'\t'->Pair(0,0x2B)
