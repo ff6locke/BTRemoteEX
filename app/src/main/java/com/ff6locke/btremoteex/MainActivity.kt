@@ -130,6 +130,11 @@ class MainActivity : Activity() {
   airPanel.addView(airSystemKeys,LinearLayout.LayoutParams(-1,dp(52)).apply{topMargin=dp(8)})
   val recenterButton=Button(this).apply{text="Re-centre";textSize=15f;setOnClickListener{lastGyroTime=0L;Toast.makeText(this@MainActivity,"Air mouse re-centred",Toast.LENGTH_SHORT).show()}}
   airPanel.addView(recenterButton,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(4)})
+  val airTextEntry=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER_VERTICAL}
+  val airTextInput=EditText(this).apply{hint="Type text to send to GX1";textSize=14f;setSingleLine(true);setTextColor(android.graphics.Color.WHITE);setHintTextColor(android.graphics.Color.LTGRAY);setPadding(dp(10),0,dp(8),0);background=android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.RECTANGLE;cornerRadius=dp(8).toFloat();setColor(android.graphics.Color.rgb(24,43,67));setStroke(dp(1),android.graphics.Color.rgb(78,125,190))}}
+  airTextEntry.addView(airTextInput,LinearLayout.LayoutParams(0,dp(46),1f).apply{rightMargin=dp(5)})
+  airTextEntry.addView(Button(this).apply{text="SEND";textSize=13f;setOnClickListener{val value=airTextInput.text.toString();if(value.isNotEmpty()){sendText(value);airTextInput.text.clear();(getSystemService(Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager).hideSoftInputFromWindow(airTextInput.windowToken,0)}}},LinearLayout.LayoutParams(dp(82),dp(46)))
+  airPanel.addView(airTextEntry,LinearLayout.LayoutParams(-1,dp(48)).apply{topMargin=dp(5)})
   var airRightClickFired=false
   val airRightClickTask=Runnable{airRightClickFired=true;click(2)}
   val airGestureListener=View.OnTouchListener{_,event->when(event.actionMasked){
@@ -139,7 +144,7 @@ class MainActivity : Activity() {
    else->true
   }}
   fun attachAirGestures(view:View){
-   if(view===recenterButton || view is Button)return
+   if(view===recenterButton || view is Button || view is EditText)return
    view.isClickable=true
    view.setOnTouchListener(airGestureListener)
    if(view is android.view.ViewGroup){for(i in 0 until view.childCount)attachAirGestures(view.getChildAt(i))}
