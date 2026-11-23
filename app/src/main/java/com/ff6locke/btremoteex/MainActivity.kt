@@ -57,70 +57,74 @@ class MainActivity : Activity() {
  private fun ui(){
   val density=resources.displayMetrics.density
   fun dp(v:Int)=(v*density).roundToInt()
-  val root=LinearLayout(this).apply{orientation=1;setPadding(dp(14),dp(14),dp(14),dp(20));setBackgroundColor(android.graphics.Color.rgb(5,15,34))}
-  val scroll=ScrollView(this).apply{isFillViewport=true;addView(root)}
-  val title=TextView(this).apply{text="BTRemoteEX";textSize=27f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(8),0,dp(12))}
-  root.addView(title,LinearLayout.LayoutParams(-1,-2))
-  status=TextView(this).apply{text="Ready";textSize=16f;setTextColor(android.graphics.Color.LTGRAY);gravity=android.view.Gravity.CENTER;setPadding(0,dp(4),0,dp(10))}
-  root.addView(status)
-  val connect=Button(this).apply{text="Connect Bluetooth HID";textSize=17f;setOnClickListener{startHid()}}
-  root.addView(connect,LinearLayout.LayoutParams(-1,dp(54)))
-  modeButton=Button(this).apply{text="Switch to Air Mouse";textSize=18f;setOnClickListener{setMode(!airMode)}}
-  root.addView(modeButton,LinearLayout.LayoutParams(-1,dp(58)).apply{topMargin=dp(10);bottomMargin=dp(10)})
+  val screenDp=(resources.displayMetrics.heightPixels/density).roundToInt()
+  val padDp=((screenDp-500)/3).coerceIn(56,88)
+  val padSize=dp(padDp)
+  val root=LinearLayout(this).apply{orientation=1;setPadding(dp(10),dp(4),dp(10),dp(6));setBackgroundColor(android.graphics.Color.rgb(5,15,34))}
+  val title=TextView(this).apply{text="BTRemoteEX";textSize=23f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(2),0,dp(3))}
+  root.addView(title,LinearLayout.LayoutParams(-1,dp(34)))
+  status=TextView(this).apply{text="Ready";textSize=13f;setTextColor(android.graphics.Color.LTGRAY);gravity=android.view.Gravity.CENTER;setPadding(0,0,0,dp(2))}
+  root.addView(status,LinearLayout.LayoutParams(-1,dp(24)))
+  root.addView(Button(this).apply{text="Connect Bluetooth HID";textSize=15f;setOnClickListener{startHid()}},LinearLayout.LayoutParams(-1,dp(42)))
+  modeButton=Button(this).apply{text="Switch to Air Mouse";textSize=16f;setOnClickListener{setMode(!airMode)}}
+  root.addView(modeButton,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(4);bottomMargin=dp(2)})
   airPanel=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER}
-  airPanel.addView(TextView(this).apply{text="AIR MOUSE MODE";textSize=22f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(18),0,dp(18))})
-  airPanel.addView(TextView(this).apply{text="Move your phone gently to move the pointer. Keep the phone level, then use the click buttons.";textSize=16f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(dp(12),dp(18),dp(12),dp(24))})
+  airPanel.addView(TextView(this).apply{text="AIR MOUSE MODE";textSize=20f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(12),0,dp(12))})
+  airPanel.addView(TextView(this).apply{text="Move your phone gently to move the pointer. Keep the phone level, then use the click buttons.";textSize=15f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(dp(10),dp(8),dp(10),dp(16))})
   val mouseButtons=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
-  mouseButtons.addView(Button(this).apply{text="LEFT CLICK";textSize=16f;setOnClickListener{click(1)}},LinearLayout.LayoutParams(0,dp(76),1f).apply{rightMargin=dp(6)})
-  mouseButtons.addView(Button(this).apply{text="RIGHT CLICK";textSize=16f;setOnClickListener{click(2)}},LinearLayout.LayoutParams(0,dp(76),1f).apply{leftMargin=dp(6)})
+  mouseButtons.addView(Button(this).apply{text="LEFT CLICK";textSize=15f;setOnClickListener{click(1)}},LinearLayout.LayoutParams(0,dp(62),1f).apply{rightMargin=dp(4)})
+  mouseButtons.addView(Button(this).apply{text="RIGHT CLICK";textSize=15f;setOnClickListener{click(2)}},LinearLayout.LayoutParams(0,dp(62),1f).apply{leftMargin=dp(4)})
   airPanel.addView(mouseButtons)
-  airPanel.addView(Button(this).apply{text="Re-centre";textSize=17f;setOnClickListener{lastGyroTime=0L;Toast.makeText(this@MainActivity,"Air mouse re-centred",Toast.LENGTH_SHORT).show()}},LinearLayout.LayoutParams(-1,dp(60)).apply{topMargin=dp(12)})
-  tvPanel=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER;setPadding(0,dp(8),0,dp(8))}
-  tvPanel.addView(TextView(this).apply{text="TV D-PAD MODE";textSize=20f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(6),0,dp(14))})
+  airPanel.addView(Button(this).apply{text="Re-centre";textSize=15f;setOnClickListener{lastGyroTime=0L;Toast.makeText(this@MainActivity,"Air mouse re-centred",Toast.LENGTH_SHORT).show()}},LinearLayout.LayoutParams(-1,dp(48)).apply{topMargin=dp(8)})
+  tvPanel=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER;setPadding(0,dp(2),0,dp(2))}
+  tvPanel.addView(TextView(this).apply{text="TV D-PAD MODE";textSize=16f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(2),0,dp(4))},LinearLayout.LayoutParams(-1,dp(26)))
   fun padButton(label:String,usage:Int):Button=Button(this).apply{
-   text=label;textSize=if(label=="OK")28f else 42f;setTextColor(android.graphics.Color.WHITE);isAllCaps=false;minHeight=dp(104);setPadding(dp(4),dp(4),dp(4),dp(4))
-   background=android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.RECTANGLE;cornerRadius=dp(22).toFloat();setColor(if(label=="OK")android.graphics.Color.rgb(0,112,245) else android.graphics.Color.rgb(35,65,105));setStroke(dp(2),android.graphics.Color.rgb(78,125,190))}
+   text=label;textSize=if(label=="OK")22f else 34f;setTextColor(android.graphics.Color.WHITE);isAllCaps=false;minHeight=padSize;setPadding(dp(2),dp(2),dp(2),dp(2))
+   background=android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.RECTANGLE;cornerRadius=dp(16).toFloat();setColor(if(label=="OK")android.graphics.Color.rgb(0,112,245) else android.graphics.Color.rgb(35,65,105));setStroke(dp(1),android.graphics.Color.rgb(78,125,190))}
    setOnClickListener{key(0,usage)}
   }
-  val padSize=dp(108)
-  val blank=View(this)
   val topRow=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
-  topRow.addView(blank,LinearLayout.LayoutParams(padSize,padSize))
-  topRow.addView(padButton("▲",0x52),LinearLayout.LayoutParams(padSize,padSize).apply{leftMargin=dp(5);rightMargin=dp(5)})
+  topRow.addView(View(this),LinearLayout.LayoutParams(padSize,padSize))
+  topRow.addView(padButton("▲",0x52),LinearLayout.LayoutParams(padSize,padSize).apply{leftMargin=dp(3);rightMargin=dp(3)})
   topRow.addView(View(this),LinearLayout.LayoutParams(padSize,padSize))
   tvPanel.addView(topRow)
   val middle=LinearLayout(this).apply{orientation=0;gravity=android.view.Gravity.CENTER}
-  middle.addView(padButton("◀",0x50),LinearLayout.LayoutParams(padSize,padSize).apply{rightMargin=dp(5)})
-  middle.addView(padButton("OK",0x28),LinearLayout.LayoutParams(padSize,padSize).apply{leftMargin=dp(5);rightMargin=dp(5)})
-  middle.addView(padButton("▶",0x4F),LinearLayout.LayoutParams(padSize,padSize).apply{leftMargin=dp(5)})
-  tvPanel.addView(middle,LinearLayout.LayoutParams(-1,padSize).apply{topMargin=dp(5);bottomMargin=dp(5)})
+  middle.addView(padButton("◀",0x50),LinearLayout.LayoutParams(padSize,padSize).apply{rightMargin=dp(3)})
+  middle.addView(padButton("OK",0x28),LinearLayout.LayoutParams(padSize,padSize).apply{leftMargin=dp(3);rightMargin=dp(3)})
+  middle.addView(padButton("▶",0x4F),LinearLayout.LayoutParams(padSize,padSize).apply{leftMargin=dp(3)})
+  tvPanel.addView(middle,LinearLayout.LayoutParams(-1,padSize).apply{topMargin=dp(3);bottomMargin=dp(3)})
   val bottomRow=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
   bottomRow.addView(View(this),LinearLayout.LayoutParams(padSize,padSize))
-  bottomRow.addView(padButton("▼",0x51),LinearLayout.LayoutParams(padSize,padSize).apply{leftMargin=dp(5);rightMargin=dp(5)})
+  bottomRow.addView(padButton("▼",0x51),LinearLayout.LayoutParams(padSize,padSize).apply{leftMargin=dp(3);rightMargin=dp(3)})
   bottomRow.addView(View(this),LinearLayout.LayoutParams(padSize,padSize))
   tvPanel.addView(bottomRow)
   val systemKeys=LinearLayout(this).apply{orientation=0;gravity=android.view.Gravity.CENTER}
-  fun systemButton(label:String,icon:String,usage:Int)=Button(this).apply{text="$icon\n$label";textSize=17f;isAllCaps=false;minHeight=dp(82);setTextColor(android.graphics.Color.WHITE);setOnClickListener{consumer(usage)}}
-  systemKeys.addView(systemButton("BACK","↶",0x0224),LinearLayout.LayoutParams(0,dp(86),1f).apply{rightMargin=dp(5)})
-  systemKeys.addView(systemButton("HOME","⌂",0x0223),LinearLayout.LayoutParams(0,dp(86),1f).apply{leftMargin=dp(3);rightMargin=dp(3)})
-  systemKeys.addView(systemButton("MENU","☰",0x0040),LinearLayout.LayoutParams(0,dp(86),1f).apply{leftMargin=dp(5)})
-  tvPanel.addView(systemKeys,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(16)})
+  fun systemButton(label:String,icon:String,usage:Int)=Button(this).apply{text="$icon  $label";textSize=14f;isAllCaps=false;minHeight=dp(52);setTextColor(android.graphics.Color.WHITE);setOnClickListener{consumer(usage)}}
+  systemKeys.addView(systemButton("BACK","↶",0x0224),LinearLayout.LayoutParams(0,dp(54),1f).apply{rightMargin=dp(3)})
+  systemKeys.addView(systemButton("HOME","⌂",0x0223),LinearLayout.LayoutParams(0,dp(54),1f).apply{leftMargin=dp(2);rightMargin=dp(2)})
+  systemKeys.addView(systemButton("MENU","☰",0x0040),LinearLayout.LayoutParams(0,dp(54),1f).apply{leftMargin=dp(3)})
+  tvPanel.addView(systemKeys,LinearLayout.LayoutParams(-1,dp(54)).apply{topMargin=dp(5)})
   root.addView(tvPanel,LinearLayout.LayoutParams(-1,-2))
-  root.addView(airPanel,LinearLayout.LayoutParams(-1,-2))
-  entry=EditText(this).apply{hint="Type text to send to GX1";setSingleLine(true);textSize=16f}
-  root.addView(entry,LinearLayout.LayoutParams(-1,dp(56)).apply{topMargin=dp(14)})
-  root.addView(Button(this).apply{text="Send text";textSize=17f;setOnClickListener{sendText(entry.text.toString());entry.text.clear()}},LinearLayout.LayoutParams(-1,dp(54)).apply{topMargin=dp(6)})
-  speedLabel=TextView(this).apply{text="Control sensitivity: 1.4x";textSize=15f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER_VERTICAL}
-  root.addView(speedLabel,LinearLayout.LayoutParams(-1,dp(34)).apply{topMargin=dp(10)})
+  root.addView(airPanel,LinearLayout.LayoutParams(-1,0,1f))
+  entry=EditText(this).apply{
+   hint="Type text to send to GX1";setSingleLine(true);textSize=16f
+   setTextColor(android.graphics.Color.WHITE);setHintTextColor(android.graphics.Color.LTGRAY)
+   setBackgroundTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.rgb(65,145,255)))
+   inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+  }
+  root.addView(entry,LinearLayout.LayoutParams(-1,dp(48)).apply{topMargin=dp(4)})
+  root.addView(Button(this).apply{text="Send text";textSize=15f;setOnClickListener{sendText(entry.text.toString());entry.text.clear()}},LinearLayout.LayoutParams(-1,dp(42)).apply{topMargin=dp(3)})
+  speedLabel=TextView(this).apply{text="Control sensitivity: 1.4x";textSize=13f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER_VERTICAL}
+  root.addView(speedLabel,LinearLayout.LayoutParams(-1,dp(24)).apply{topMargin=dp(2)})
   root.addView(SeekBar(this).apply{max=25;progress=9;setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{
    override fun onProgressChanged(sb:SeekBar,p:Int,fromUser:Boolean){sensitivity=0.5f+p*0.25f;speedLabel.text="Control sensitivity: %.2fx".format(sensitivity)}
    override fun onStartTrackingTouch(sb:SeekBar){}
    override fun onStopTrackingTouch(sb:SeekBar){}
-  })},LinearLayout.LayoutParams(-1,dp(44)))
-  root.addView(TextView(this).apply{text="Pair/connect from GX1 Bluetooth settings. TV mode sends D-pad keys; Air Mouse mode uses the phone gyroscope.";textSize=13f;setTextColor(android.graphics.Color.LTGRAY);gravity=android.view.Gravity.CENTER;setPadding(dp(6),dp(12),dp(6),dp(8))})
+  })},LinearLayout.LayoutParams(-1,dp(28)))
+  root.addView(TextView(this).apply{text="TV mode: D-pad keys  •  Air Mouse: move phone to control pointer";textSize=11f;setTextColor(android.graphics.Color.LTGRAY);gravity=android.view.Gravity.CENTER;setPadding(0,dp(2),0,0)},LinearLayout.LayoutParams(-1,dp(18)))
   sensorManager=getSystemService(Context.SENSOR_SERVICE) as SensorManager
   gyro=sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
-  setContentView(scroll)
+  setContentView(root)
   setMode(false)
  }
  private fun setMode(useAirMouse:Boolean){
