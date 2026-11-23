@@ -106,7 +106,7 @@ class MainActivity : Activity() {
   root.addView(title,LinearLayout.LayoutParams(-1,dp(34)))
   status=TextView(this).apply{text="Ready";textSize=13f;setTextColor(android.graphics.Color.LTGRAY);gravity=android.view.Gravity.CENTER;setPadding(0,0,0,dp(2))}
   root.addView(status,LinearLayout.LayoutParams(-1,dp(24)))
-  root.addView(Button(this).apply{text="Connect Bluetooth HID";textSize=15f;setOnClickListener{startHid()}},LinearLayout.LayoutParams(-1,dp(42)))
+  root.addView(Button(this).apply{text="Connect Bluetooth HID";textSize=15f;setOnClickListener{retryHid()}},LinearLayout.LayoutParams(-1,dp(42)))
   modeList=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(0,dp(3),0,dp(3))}
   modeButtons=mutableListOf()
   val modeNames=listOf("TV D-pad","Air Mouse","Mouse Touchpad","Keyboard")
@@ -260,6 +260,15 @@ class MainActivity : Activity() {
  }
  override fun onPause(){super.onPause();sensorManager?.unregisterListener(gyroListener);lastGyroTime=0L}
  override fun onResume(){super.onResume();if(airMode&&gyro!=null)sensorManager?.registerListener(gyroListener,gyro,SensorManager.SENSOR_DELAY_GAME)}
+ private fun retryHid(){
+  if(!adapter.isEnabled){status.text="Turn on phone Bluetooth first";return}
+  try{hid?.let{adapter.closeProfileProxy(BluetoothProfile.HID_DEVICE,it)}}catch(_:Exception){}
+  hid=null
+  registered=false
+  profileRequested=false
+  status.text="Retrying Android Bluetooth HID service…"
+  startHid()
+ }
  private fun startHid(){
   if(Build.VERSION.SDK_INT<28){status.text="Android 9+ required";return}
   if(Build.VERSION.SDK_INT>=31&&(checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED||checkSelfPermission(Manifest.permission.BLUETOOTH_ADVERTISE)!=PackageManager.PERMISSION_GRANTED)){requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT,Manifest.permission.BLUETOOTH_ADVERTISE),23);return}
@@ -275,10 +284,10 @@ class MainActivity : Activity() {
   if(profileRequested)return
   profileRequested=true
   status.text="Waiting for Android Bluetooth HID service…"
-  handler.postDelayed({if(profileRequested&&!registered&&hid==null)status.text="Android HID service did not respond — retry Bluetooth HID"},12000)
+  handler.postDelayed({if(profileRequested&&!registered&&hid==null){profileRequested=false;status.text="Android HID service timed out — tap CONNECT BLUETOOTH HID to retry"}},12000)
   try{val proxyRequested=adapter.getProfileProxy(this,object:BluetoothProfile.ServiceListener{
    override fun onServiceConnected(profile:Int,proxy:BluetoothProfile){
-    if(profile!=BluetoothProfile.HID_DEVICE)return
+    if(profile!=BluetoothProfile.HID_DEVICE){runOnUiThread{status.text="Unexpected Bluetooth profile: $profile"};return}
     hid=proxy as BluetoothHidDevice
     runOnUiThread{status.text="Android HID service connected — registering keyboard and mouse…"}
     // Composite descriptor: report 1 = mouse, report 2 = keyboard.
