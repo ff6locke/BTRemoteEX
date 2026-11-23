@@ -48,6 +48,9 @@ class BleHidServer(
     @Volatile var isConnected: Boolean = false
         private set
     private var serviceReady = false
+    private var batteryService: BluetoothGattService? = null
+    private var deviceInfoService: BluetoothGattService? = null
+    private var advertiseCallback: AdvertiseCallback? = null
 
     private fun characteristic(uuid: UUID, properties: Int, permissions: Int, value: ByteArray? = null) =
         BluetoothGattCharacteristic(uuid, properties, permissions).apply { if (value != null) this.value = value }
@@ -86,12 +89,12 @@ class BleHidServer(
                 stop()
                 return false
             }
-            val battery = BluetoothGattService(BATTERY, BluetoothGattService.SERVICE_TYPE_PRIMARY)
-            battery.addCharacteristic(characteristic(BATTERY_LEVEL, BluetoothGattCharacteristic.PROPERTY_READ, BluetoothGattCharacteristic.PERMISSION_READ, byteArrayOf(100)))
-            server?.addService(battery)
-            val info = BluetoothGattService(DEVICE_INFO, BluetoothGattService.SERVICE_TYPE_PRIMARY)
-            info.addCharacteristic(characteristic(PNP_ID, BluetoothGattCharacteristic.PROPERTY_READ, BluetoothGattCharacteristic.PERMISSION_READ, byteArrayOf(0x02,0x6b,0x1d,0x01,0x00,0x01,0x00)))
-            server?.addService(info)
+            batteryService = BluetoothGattService(BATTERY, BluetoothGattService.SERVICE_TYPE_PRIMARY).apply {
+                addCharacteristic(characteristic(BATTERY_LEVEL, BluetoothGattCharacteristic.PROPERTY_READ, BluetoothGattCharacteristic.PERMISSION_READ, byteArrayOf(100)))
+            }
+            deviceInfoService = BluetoothGattService(DEVICE_INFO, BluetoothGattService.SERVICE_TYPE_PRIMARY).apply {
+                addCharacteristic(characteristic(PNP_ID, BluetoothGattCharacteristic.PROPERTY_READ, BluetoothGattCharacteristic.PERMISSION_READ, byteArrayOf(0x02,0x6b,0x1d,0x01,0x00,0x01,0x00)))
+            }
             advertiser = a.bluetoothLeAdvertiser
             serviceReady = false
             status("Starting BLE HID service…")
@@ -120,14 +123,15 @@ class BleHidServer(
                 .addServiceUuid(ParcelUuid(HID))
                 .setIncludeDeviceName(true)
                 .build()
-            adv.startAdvertising(settings, data, object : AdvertiseCallback() {
+            advertiseCallback = object : AdvertiseCallback() {
                 override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {
                     status("BLE HID advertising as this phone — scan for Bluetooth keyboard")
                 }
                 override fun onStartFailure(errorCode: Int) {
                     status("BLE advertising failed (code $errorCode)")
                 }
-            })
+            }
+            adv.startAdvertising(settings, data, advertiseCallback)
         } catch (e: SecurityException) {
             status("BLE advertising permission denied")
         } catch (e: Exception) {
@@ -141,9 +145,13 @@ class BleHidServer(
                 status("BLE HID service setup failed ($statusCode)")
                 return
             }
-            if (service.uuid == HID && !serviceReady) {
-                serviceReady = true
-                beginAdvertising()
+            when (service.uuid) {
+                HID -> server?.addService(batteryService)
+                BATTERY -> server?.addService(deviceInfoService)
+                DEVICE_INFO -> {
+                    serviceReady = true
+                    beginAdvertising()
+                }
             }
         }
         override fun onConnectionStateChange(device: BluetoothDevice, statusCode: Int, newState: Int) {
@@ -194,7 +202,7 @@ class BleHidServer(
     }
 
     fun stop() {
-        try { advertiser?.stopAdvertising(object : AdvertiseCallback() {}) } catch (_: Exception) {}
+        try { advertiseCallback?.let { advertiser?.stopAdvertising(it) } } catch (_: Exception) {}
         try { server?.clearServices(); server?.close() } catch (_: Exception) {}
         server = null
         advertiser = null
@@ -204,5 +212,8 @@ class BleHidServer(
         notifyEnabled.clear()
         isConnected = false
         serviceReady = false
+        batteryService = null
+        deviceInfoService = null
+        advertiseCallback = null
     }
 }
