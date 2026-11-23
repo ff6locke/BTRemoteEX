@@ -24,6 +24,7 @@ class MainActivity : Activity() {
  private var altOn=false
  private val keyboardKeyButtons=mutableListOf<Pair<Button,String>>()
  private fun shiftedLabel(label:String):String {
+  if(label.length==1 && label[0].isLetter())return if(capsOn xor shiftOn)label.uppercase() else label.lowercase()
   if(!shiftOn)return if(label=="~")"`" else label
   return when(label) {
    "1"->"!";"2"->"@";"3"->"#";"4"->"$";"5"->"%";"6"->"^";"7"->"&";"8"->"*";"9"->"("; "0"->")"; "-"->"_"; "="->"+"; "["->"{"; "]"->"}"; "\\"->"|"; ";"->":"; "'"->"\u0022"; ","->"<"; "."->">"; "/"->"?"; "~"->"~"; else->label
@@ -158,7 +159,7 @@ class MainActivity : Activity() {
   addSpecialRow(listOf("Esc" to {sendKeyboardUsage(0x29)},"F1" to {sendKeyboardUsage(0x3A)},"F2" to {sendKeyboardUsage(0x3B)},"F3" to {sendKeyboardUsage(0x3C)},"F4" to {sendKeyboardUsage(0x3D)},"F5" to {sendKeyboardUsage(0x3E)},"F6" to {sendKeyboardUsage(0x3F)},"F7" to {sendKeyboardUsage(0x40)},"F8" to {sendKeyboardUsage(0x41)}),dp(32))
   addSpecialRow(listOf("~","1","2","3","4","5","6","7","8","9","0","-","=","⌫","Del").map{label->label to {when(label){"⌫"->sendKeyboardUsage(0x2A);"Del"->sendKeyboardUsage(0x4C);else->sendKeyboardChar(if(label=="~"&&!shiftOn)"`" else label)}}})
   addSpecialRow(listOf("Tab","q","w","e","r","t","y","u","i","o","p","[","]","\\").map{label->label to {if(label=="Tab")sendKeyboardUsage(0x2B) else sendKeyboardChar(label)}})
-  addSpecialRow(listOf("Caps","a","s","d","f","g","h","j","k","l",";","\'","Enter").map{label->label to {when(label){"Caps"->{capsOn=!capsOn;Toast.makeText(this@MainActivity,if(capsOn)"Caps Lock on" else "Caps Lock off",Toast.LENGTH_SHORT).show()};"Enter"->sendKeyboardUsage(0x28);else->sendKeyboardChar(label)}}})
+  addSpecialRow(listOf("Caps","a","s","d","f","g","h","j","k","l",";","\'","Enter").map{label->label to {when(label){"Caps"->{capsOn=!capsOn;refreshKeyboardLabels();Toast.makeText(this@MainActivity,if(capsOn)"Caps Lock on" else "Caps Lock off",Toast.LENGTH_SHORT).show()};"Enter"->sendKeyboardUsage(0x28);else->sendKeyboardChar(label)}}})
   addSpecialRow(listOf("Shift","z","x","c","v","b","n","m",",",".","/","Shift").map{label->label to {if(label=="Shift"){}else sendKeyboardChar(label)}})
   val bottomKeyboardRow=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER};fun addBottomKey(label:String,action:()->Unit,weight:Float=1f){bottomKeyboardRow.addView(keyButton(label,action),LinearLayout.LayoutParams(0,dp(40),weight).apply{leftMargin=dp(1);rightMargin=dp(1)})};addBottomKey("Ctrl",{ctrlOn=!ctrlOn;Toast.makeText(this@MainActivity,if(ctrlOn)"Ctrl held" else "Ctrl released",Toast.LENGTH_SHORT).show()});addBottomKey("Win",{sendKeyboardUsage(0xE3)});addBottomKey("Alt",{altOn=!altOn;Toast.makeText(this@MainActivity,if(altOn)"Alt held" else "Alt released",Toast.LENGTH_SHORT).show()});addBottomKey("Space",{sendKeyboardUsage(0x2C)},4f);addBottomKey("Alt",{altOn=!altOn;Toast.makeText(this@MainActivity,if(altOn)"Alt held" else "Alt released",Toast.LENGTH_SHORT).show()});addBottomKey("Ctrl",{ctrlOn=!ctrlOn;Toast.makeText(this@MainActivity,if(ctrlOn)"Ctrl held" else "Ctrl released",Toast.LENGTH_SHORT).show()});keyboardPanel.addView(bottomKeyboardRow,LinearLayout.LayoutParams(-1,dp(40)))
   keyboardPanel.setBackgroundColor(android.graphics.Color.rgb(5,15,34))
