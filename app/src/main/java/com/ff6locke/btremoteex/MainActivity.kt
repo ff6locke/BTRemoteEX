@@ -52,7 +52,7 @@ class MainActivity : Activity() {
    val now=event.timestamp
    if(lastGyroTime!=0L){
     val dt=((now-lastGyroTime)/1_000_000_000.0).toFloat().coerceIn(0f,0.05f)
-    val dx=(event.values[2]*dt*1100f*sensitivity).roundToInt()
+    val dx=(-event.values[2]*dt*1100f*sensitivity).roundToInt()
     val dy=(-event.values[0]*dt*900f*sensitivity).roundToInt()
     if(dx!=0||dy!=0)mouse(0,dx,dy,0)
    }
