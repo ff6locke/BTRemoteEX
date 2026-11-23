@@ -18,7 +18,8 @@ import kotlin.math.roundToInt
 class MainActivity : Activity() {
  private lateinit var status:TextView
  private lateinit var speedLabel:TextView
- private lateinit var entry:EditText
+ private var shiftOn=false
+ private var capsOn=false
  private lateinit var modeList:LinearLayout
  private lateinit var keyboardPanel:LinearLayout
  private lateinit var modeButtons:MutableList<Button>
@@ -138,16 +139,38 @@ class MainActivity : Activity() {
   root.addView(touchPanel,LinearLayout.LayoutParams(-1,0,1f))
   root.addView(airPanel,LinearLayout.LayoutParams(-1,0,1f))
   keyboardPanel=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=android.view.Gravity.CENTER;visibility=View.GONE}
-  keyboardPanel.addView(TextView(this).apply{text="KEYBOARD MODE";textSize=20f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(8),0,dp(12))},LinearLayout.LayoutParams(-1,dp(44)))
-  entry=EditText(this).apply{
-   hint="Type text to send to GX1";setSingleLine(false);minLines=3;maxLines=5;textSize=18f
-   setTextColor(android.graphics.Color.WHITE);setHintTextColor(android.graphics.Color.LTGRAY)
-   setBackgroundTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.rgb(65,145,255)))
-   inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+  keyboardPanel.addView(TextView(this).apply{text="KEYBOARD MODE  •  Tap keys to send";textSize=16f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(3),0,dp(5))},LinearLayout.LayoutParams(-1,dp(30)))
+  fun keyButton(label:String, action:()->Unit, weight:Float=1f):Button=Button(this).apply{
+   text=label;textSize=if(label.length>1)11f else 16f;isAllCaps=false;minHeight=dp(42);setPadding(dp(1),0,dp(1),0)
+   setTextColor(android.graphics.Color.WHITE)
+   background=android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.RECTANGLE;cornerRadius=dp(6).toFloat();setColor(android.graphics.Color.rgb(35,65,105));setStroke(dp(1),android.graphics.Color.rgb(78,125,190))}
+   setOnClickListener{action()}
   }
-  keyboardPanel.addView(entry,LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(8);bottomMargin=dp(8)})
-  keyboardPanel.addView(Button(this).apply{text="Send text";textSize=16f;setOnClickListener{sendText(entry.text.toString());entry.text.clear()}},LinearLayout.LayoutParams(-1,dp(48)))
-  root.addView(keyboardPanel,LinearLayout.LayoutParams(-1,0,1f))
+  fun addKeyRow(keys:List<String>,height:Int=dp(48)){
+   val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER}
+   keys.forEachIndexed{index,label->
+    val button=keyButton(label,{sendKeyboardChar(label)})
+    row.addView(button,LinearLayout.LayoutParams(0,height,1f).apply{leftMargin=dp(2);rightMargin=dp(2)})
+   }
+   keyboardPanel.addView(row,LinearLayout.LayoutParams(-1,height).apply{topMargin=dp(2);bottomMargin=dp(2)})
+  }
+  addKeyRow(listOf("1","2","3","4","5","6","7","8","9","0"))
+  addKeyRow(listOf("q","w","e","r","t","y","u","i","o","p"))
+  addKeyRow(listOf("a","s","d","f","g","h","j","k","l"))
+  val third=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER}
+  third.addView(keyButton("Shift",{shiftOn=!shiftOn;Toast.makeText(this@MainActivity,if(shiftOn)"Shift on" else "Shift off",Toast.LENGTH_SHORT).show()}),LinearLayout.LayoutParams(0,dp(48),1.5f).apply{leftMargin=dp(2);rightMargin=dp(2)})
+  listOf("z","x","c","v","b","n","m").forEach{label->third.addView(keyButton(label,{sendKeyboardChar(label)}),LinearLayout.LayoutParams(0,dp(48),1f).apply{leftMargin=dp(1);rightMargin=dp(1)})}
+  third.addView(keyButton("⌫",{key(0,0x2A)}),LinearLayout.LayoutParams(0,dp(48),1.5f).apply{leftMargin=dp(2);rightMargin=dp(2)})
+  keyboardPanel.addView(third,LinearLayout.LayoutParams(-1,dp(50)).apply{topMargin=dp(2)})
+  val bottomKeys=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER}
+  bottomKeys.addView(keyButton("Caps",{capsOn=!capsOn;Toast.makeText(this@MainActivity,if(capsOn)"Caps Lock on" else "Caps Lock off",Toast.LENGTH_SHORT).show()}),LinearLayout.LayoutParams(0,dp(48),1.3f).apply{leftMargin=dp(2);rightMargin=dp(2)})
+  bottomKeys.addView(keyButton("123? ",{sendKeyboardChar("?")}),LinearLayout.LayoutParams(0,dp(48),1f).apply{leftMargin=dp(1);rightMargin=dp(1)})
+  bottomKeys.addView(keyButton("Space",{key(0,0x2C)}),LinearLayout.LayoutParams(0,dp(48),3f).apply{leftMargin=dp(1);rightMargin=dp(1)})
+  bottomKeys.addView(keyButton("Enter",{key(0,0x28)}),LinearLayout.LayoutParams(0,dp(48),1f).apply{leftMargin=dp(1);rightMargin=dp(1)})
+  keyboardPanel.addView(bottomKeys,LinearLayout.LayoutParams(-1,dp(50)).apply{topMargin=dp(2);bottomMargin=dp(2)})
+  val symbols=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER}
+  listOf("-","_","=","+","(",")","@","#","!","?").forEach{label->symbols.addView(keyButton(label,{sendKeyboardChar(label)}),LinearLayout.LayoutParams(0,dp(42),1f).apply{leftMargin=dp(1);rightMargin=dp(1)})}
+  keyboardPanel.addView(symbols,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(2)})
   speedLabel=TextView(this).apply{text="Control sensitivity: 1.4x";textSize=13f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER_VERTICAL}
   root.addView(speedLabel,LinearLayout.LayoutParams(-1,dp(24)).apply{topMargin=dp(2)})
   root.addView(SeekBar(this).apply{max=25;progress=9;setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{
@@ -209,6 +232,13 @@ class MainActivity : Activity() {
  private fun click(b:Int){mouse(b,0,0,0);handler.postDelayed({mouse(0,0,0,0)},50)}
  private fun key(mod:Int,k:Int){val h=hid?:return;val d=connected?:return;if(!registered)return;try{h.sendReport(d,2,byteArrayOf(mod.toByte(),0,k.toByte(),0,0,0,0,0));handler.postDelayed({try{h.sendReport(d,2,ByteArray(8))}catch(_:Exception){}},120)}catch(_:Exception){}}
  private fun consumer(usage:Int){val h=hid?:return;val d=connected?:return;if(!registered)return;try{h.sendReport(d,3,byteArrayOf((usage and 0xFF).toByte(),((usage shr 8) and 0xFF).toByte()));handler.postDelayed({try{h.sendReport(d,3,byteArrayOf(0,0))}catch(_:Exception){}},120)}catch(_:Exception){}}
+ private fun sendKeyboardChar(label:String){
+  if(!registered||connected==null){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return}
+  val c=label.firstOrNull()?:return
+  val mapped=ascii(c)?:return
+  val shifted=if(c.isLetter())(c.isUpperCase() xor capsOn xor shiftOn) else (mapped.first!=0||shiftOn)
+  key(if(shifted)2 else 0,mapped.second)
+ }
  private fun sendText(s:String){if(!registered||connected==null){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return};var t=0L;s.forEach{c->val m=ascii(c);if(m!=null){handler.postDelayed({key(m.first,m.second)},t);t+=85}}}
  private fun ascii(c:Char):Pair<Int,Int>?{val shift=2;return when(c){
   in 'a'..'z'->Pair(0,4+(c-'a'));in 'A'..'Z'->Pair(shift,4+(c-'A'));in '1'..'9'->Pair(0,0x1E+(c-'1'));'0'->Pair(0,0x27);' '->Pair(0,0x2C);'\n','\r'->Pair(0,0x28);'\t'->Pair(0,0x2B)
