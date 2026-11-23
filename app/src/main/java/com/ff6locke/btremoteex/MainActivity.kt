@@ -160,10 +160,10 @@ class MainActivity : Activity() {
  override fun onPause(){super.onPause();sensorManager?.unregisterListener(gyroListener);lastGyroTime=0L}
  override fun onResume(){super.onResume();if(airMode&&gyro!=null)sensorManager?.registerListener(gyroListener,gyro,SensorManager.SENSOR_DELAY_GAME)}
  private fun startHid(){
-  try{val keepAlive=Intent(this,HidKeepAliveService::class.java).setAction(HidKeepAliveService.ACTION_START);if(Build.VERSION.SDK_INT>=26)startForegroundService(keepAlive)else startService(keepAlive)}catch(e:Exception){status.text="Could not start Bluetooth background service: "+(e.message?:"unknown error");return}
   if(Build.VERSION.SDK_INT<28){status.text="Android 9+ required";return}
   if(Build.VERSION.SDK_INT>=31&&(checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED||checkSelfPermission(Manifest.permission.BLUETOOTH_ADVERTISE)!=PackageManager.PERMISSION_GRANTED)){requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT,Manifest.permission.BLUETOOTH_ADVERTISE),23);return}
   if(!adapter.isEnabled){status.text="Turn on phone Bluetooth first";return}
+  try{val keepAlive=Intent(this,HidKeepAliveService::class.java).setAction(HidKeepAliveService.ACTION_START);if(Build.VERSION.SDK_INT>=26)startForegroundService(keepAlive)else startService(keepAlive)}catch(e:Exception){status.text="Could not start Bluetooth background service: "+(e.message?:"unknown error");return}
   try{adapter.getProfileProxy(this,object:BluetoothProfile.ServiceListener{
    override fun onServiceConnected(profile:Int,proxy:BluetoothProfile){
     if(profile!=BluetoothProfile.HID_DEVICE)return
