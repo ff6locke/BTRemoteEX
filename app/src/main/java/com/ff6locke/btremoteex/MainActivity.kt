@@ -57,9 +57,9 @@ class MainActivity : Activity() {
   dpad.addView(navButton("▼",0x51),LinearLayout.LayoutParams(112,56))
   root.addView(dpad,LinearLayout.LayoutParams(-1,-2))
   val systemKeys=LinearLayout(this).apply{orientation=0}
-  systemKeys.addView(Button(this).apply{text="Back";setOnClickListener{key(0,0x29)}},LinearLayout.LayoutParams(0,-2,1f))
-  systemKeys.addView(Button(this).apply{text="Home";setOnClickListener{key(0,0x4A)}},LinearLayout.LayoutParams(0,-2,1f))
-  systemKeys.addView(Button(this).apply{text="Menu";setOnClickListener{key(0,0x65)}},LinearLayout.LayoutParams(0,-2,1f))
+  systemKeys.addView(Button(this).apply{text="Back";setOnClickListener{consumer(0x0224)}},LinearLayout.LayoutParams(0,-2,1f))
+  systemKeys.addView(Button(this).apply{text="Home";setOnClickListener{consumer(0x0223)}},LinearLayout.LayoutParams(0,-2,1f))
+  systemKeys.addView(Button(this).apply{text="Menu";setOnClickListener{consumer(0x0040)}},LinearLayout.LayoutParams(0,-2,1f))
   root.addView(systemKeys)
   val buttons=LinearLayout(this)
   buttons.addView(Button(this).apply{text="Left click";setOnClickListener{click(1)}},LinearLayout.LayoutParams(0,-2,1f))
@@ -86,7 +86,9 @@ class MainActivity : Activity() {
      0x05,0x09,0x19,0x01,0x29,0x05,0x15,0x00,0x25,0x01,0x95,0x05,0x75,0x01,0x81,0x02,
      0x95,0x01,0x75,0x03,0x81,0x01,0x05,0x01,0x09,0x30,0x09,0x31,0x09,0x38,0x15,0x81,0x25,0x7F,0x75,0x08,0x95,0x03,0x81,0x06,0xC0,0xC0,
      0x05,0x01,0x09,0x06,0xA1,0x01,0x85,0x02,0x05,0x07,0x19,0xE0,0x29,0xE7,0x15,0x00,0x25,0x01,0x75,0x01,0x95,0x08,0x81,0x02,
-     0x95,0x01,0x75,0x08,0x81,0x01,0x19,0x00,0x29,0x65,0x15,0x00,0x25,0x65,0x75,0x08,0x95,0x06,0x81,0x00,0xC0
+     0x95,0x01,0x75,0x08,0x81,0x01,0x19,0x00,0x29,0x65,0x15,0x00,0x25,0x65,0x75,0x08,0x95,0x06,0x81,0x00,0xC0,
+     // Consumer controls: report 3, 16-bit usage (Back, Home, Menu).
+     0x05,0x0C,0x09,0x01,0xA1,0x01,0x85,0x03,0x15,0x00,0x26,0xFF,0x03,0x19,0x00,0x2A,0xFF,0x03,0x75,0x10,0x95,0x01,0x81,0x00,0xC0
     ).map{it.toByte()}.toByteArray()
     val sdp=BluetoothHidDeviceAppSdpSettings("BTRemoteEX","Air Mouse + Keyboard","Android",BluetoothHidDevice.SUBCLASS1_MOUSE,descriptor)
     hid?.registerApp(sdp,null,null,Executor{command->handler.post(command)},cb)
@@ -98,7 +100,8 @@ class MainActivity : Activity() {
  override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==23&&grantResults.isNotEmpty()&&grantResults.all{it==PackageManager.PERMISSION_GRANTED})startHid()else if(requestCode==23)status.text="Bluetooth permissions are needed for HID"}
  private fun mouse(b:Int,x:Int,y:Int,w:Int){val h=hid?:return;val d=connected?:return;if(!registered)return;try{h.sendReport(d,1,byteArrayOf(b.toByte(),x.coerceIn(-127,127).toByte(),y.coerceIn(-127,127).toByte(),w.toByte()))}catch(_:Exception){}}
  private fun click(b:Int){mouse(b,0,0,0);handler.postDelayed({mouse(0,0,0,0)},50)}
- private fun key(mod:Int,k:Int){val h=hid?:return;val d=connected?:return;if(!registered)return;try{h.sendReport(d,2,byteArrayOf(mod.toByte(),0,k.toByte(),0,0,0,0,0));handler.postDelayed({try{h.sendReport(d,2,ByteArray(8))}catch(_:Exception){}},35)}catch(_:Exception){}}
+ private fun key(mod:Int,k:Int){val h=hid?:return;val d=connected?:return;if(!registered)return;try{h.sendReport(d,2,byteArrayOf(mod.toByte(),0,k.toByte(),0,0,0,0,0));handler.postDelayed({try{h.sendReport(d,2,ByteArray(8))}catch(_:Exception){}},120)}catch(_:Exception){}}
+ private fun consumer(usage:Int){val h=hid?:return;val d=connected?:return;if(!registered)return;try{h.sendReport(d,3,byteArrayOf((usage and 0xFF).toByte(),((usage shr 8) and 0xFF).toByte()));handler.postDelayed({try{h.sendReport(d,3,byteArrayOf(0,0))}catch(_:Exception){}},120)}catch(_:Exception){}}
  private fun sendText(s:String){if(!registered||connected==null){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return};var t=0L;s.forEach{c->val m=ascii(c);if(m!=null){handler.postDelayed({key(m.first,m.second)},t);t+=85}}}
  private fun ascii(c:Char):Pair<Int,Int>?{val shift=2;return when(c){
   in 'a'..'z'->Pair(0,4+(c-'a'));in 'A'..'Z'->Pair(shift,4+(c-'A'));in '1'..'9'->Pair(0,0x1E+(c-'1'));'0'->Pair(0,0x27);' '->Pair(0,0x2C);'\n','\r'->Pair(0,0x28);'\t'->Pair(0,0x2B)
