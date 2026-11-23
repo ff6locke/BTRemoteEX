@@ -43,6 +43,24 @@ class MainActivity : Activity() {
   })})
   val pad=Pad(this).apply{setBackgroundColor(0xFFE7EDF5.toInt());move={x,y->mouse(0,x,y,0)};tap={click(1)}}
   root.addView(pad,LinearLayout.LayoutParams(-1,0,1f))
+  // TV-style directional navigation pad. These send standard HID keyboard usages.
+  root.addView(TextView(this).apply{text="TV NAVIGATION";textSize=14f;setPadding(0,10,0,4)})
+  val dpad=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER}
+  fun navButton(label:String,usage:Int,weight:Float=1f):Button =
+   Button(this).apply{text=label; textSize=18f; minHeight=52; setOnClickListener{key(0,usage)}}
+  dpad.addView(navButton("▲",0x52),LinearLayout.LayoutParams(112,56))
+  val middle=LinearLayout(this).apply{orientation=0;gravity=android.view.Gravity.CENTER}
+  middle.addView(navButton("◀",0x50),LinearLayout.LayoutParams(0,56,1f))
+  middle.addView(navButton("OK",0x28),LinearLayout.LayoutParams(0,56,1f))
+  middle.addView(navButton("▶",0x4F),LinearLayout.LayoutParams(0,56,1f))
+  dpad.addView(middle,LinearLayout.LayoutParams(300,56))
+  dpad.addView(navButton("▼",0x51),LinearLayout.LayoutParams(112,56))
+  root.addView(dpad,LinearLayout.LayoutParams(-1,-2))
+  val systemKeys=LinearLayout(this).apply{orientation=0}
+  systemKeys.addView(Button(this).apply{text="Back";setOnClickListener{key(0,0x29)}},LinearLayout.LayoutParams(0,-2,1f))
+  systemKeys.addView(Button(this).apply{text="Home";setOnClickListener{key(0,0x4A)}},LinearLayout.LayoutParams(0,-2,1f))
+  systemKeys.addView(Button(this).apply{text="Menu";setOnClickListener{key(0,0x65)}},LinearLayout.LayoutParams(0,-2,1f))
+  root.addView(systemKeys)
   val buttons=LinearLayout(this)
   buttons.addView(Button(this).apply{text="Left click";setOnClickListener{click(1)}},LinearLayout.LayoutParams(0,-2,1f))
   buttons.addView(Button(this).apply{text="Right click";setOnClickListener{click(2)}},LinearLayout.LayoutParams(0,-2,1f));root.addView(buttons)
