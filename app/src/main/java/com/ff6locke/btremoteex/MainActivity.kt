@@ -1,5 +1,7 @@
 package com.ff6locke.btremoteex
 import android.Manifest
+import android.hardware.Sensor
+import android.hardware.SensorManager
 import android.app.Activity
 import android.bluetooth.*
 import android.bluetooth.BluetoothProfile
