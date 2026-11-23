@@ -11,6 +11,11 @@ jobs:
    - uses: gradle/actions/setup-gradle@v4
      with:
       gradle-version: '8.10.2'
+   - name: Reuse debug signing key for installable updates
+     uses: actions/cache@v4
+     with:
+      path: ~/.android/debug.keystore
+      key: btrremoteex-debug-signing-key-v1
    - run: gradle assembleDebug
    - uses: actions/upload-artifact@v4
      with:
