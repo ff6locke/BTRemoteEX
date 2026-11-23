@@ -49,7 +49,7 @@ class MainActivity : Activity() {
   val scroll=LinearLayout(this)
   scroll.addView(Button(this).apply{text="Scroll ↑";setOnClickListener{mouse(0,0,0,1)}},LinearLayout.LayoutParams(0,-2,1f))
   scroll.addView(Button(this).apply{text="Scroll ↓";setOnClickListener{mouse(0,0,0,-1)}},LinearLayout.LayoutParams(0,-2,1f));root.addView(scroll)
-  entry=EditText(this).apply{hint="Type text to send to GX1";singleLine=true};root.addView(entry)
+  entry=EditText(this).apply{hint="Type text to send to GX1";setSingleLine(true)};root.addView(entry)
   root.addView(Button(this).apply{text="Send text";setOnClickListener{sendText(entry.text.toString());entry.text.clear()}})
   root.addView(TextView(this).apply{text="Pair/connect from GX1 Bluetooth settings. Touchpad swipe and tap. Text entry supports English, numbers and common symbols.";textSize=14f})
   setContentView(root)
