@@ -92,6 +92,7 @@ class MainActivity : Activity() {
   val filter=android.content.IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
   if(Build.VERSION.SDK_INT>=33)registerReceiver(btStateReceiver,filter,Context.RECEIVER_EXPORTED) else registerReceiver(btStateReceiver,filter)
   ui()
+  handler.postDelayed({startHid()},500)
  }
  override fun onDestroy(){try{unregisterReceiver(btStateReceiver)}catch(_:Exception){};super.onDestroy()}
  private fun ui(){
