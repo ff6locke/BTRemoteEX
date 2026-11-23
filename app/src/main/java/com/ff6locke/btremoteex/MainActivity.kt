@@ -19,7 +19,9 @@ class MainActivity : Activity() {
  private lateinit var status:TextView
  private lateinit var speedLabel:TextView
  private lateinit var entry:EditText
- private lateinit var modeButton:Button
+ private lateinit var modeList:LinearLayout
+ private lateinit var keyboardPanel:LinearLayout
+ private lateinit var modeButtons:MutableList<Button>
  private lateinit var airPanel:LinearLayout
  private lateinit var tvPanel:LinearLayout
  private lateinit var touchPanel:LinearLayout
@@ -35,8 +37,8 @@ class MainActivity : Activity() {
    val now=event.timestamp
    if(lastGyroTime!=0L){
     val dt=((now-lastGyroTime)/1_000_000_000.0).toFloat().coerceIn(0f,0.05f)
-    val dx=(-event.values[1]*dt*900f*sensitivity).roundToInt()
-    val dy=(event.values[0]*dt*900f*sensitivity).roundToInt()
+    val dx=(event.values[1]*dt*900f*sensitivity).roundToInt()
+    val dy=(-event.values[0]*dt*900f*sensitivity).roundToInt()
     if(dx!=0||dy!=0)mouse(0,dx,dy,0)
    }
    lastGyroTime=now
@@ -69,8 +71,20 @@ class MainActivity : Activity() {
   status=TextView(this).apply{text="Ready";textSize=13f;setTextColor(android.graphics.Color.LTGRAY);gravity=android.view.Gravity.CENTER;setPadding(0,0,0,dp(2))}
   root.addView(status,LinearLayout.LayoutParams(-1,dp(24)))
   root.addView(Button(this).apply{text="Connect Bluetooth HID";textSize=15f;setOnClickListener{startHid()}},LinearLayout.LayoutParams(-1,dp(42)))
-  modeButton=Button(this).apply{text="Mode: TV D-pad  •  Tap to change";textSize=16f;setOnClickListener{setMode((controlMode+1)%3)}}
-  root.addView(modeButton,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(4);bottomMargin=dp(2)})
+  modeList=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(0,dp(3),0,dp(3))}
+  modeButtons=mutableListOf()
+  val modeNames=listOf("TV D-pad","Air Mouse","Mouse Touchpad","Keyboard")
+  for(rowIndex in 0..1){
+   val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER}
+   for(colIndex in 0..1){
+    val index=rowIndex*2+colIndex
+    val b=Button(this).apply{text=modeNames[index];textSize=13f;isAllCaps=false;minHeight=dp(38);setOnClickListener{setMode(index)}}
+    modeButtons.add(b)
+    row.addView(b,LinearLayout.LayoutParams(0,dp(40),1f).apply{if(colIndex==0)rightMargin=dp(3) else leftMargin=dp(3)})
+   }
+   modeList.addView(row,LinearLayout.LayoutParams(-1,dp(42)).apply{if(rowIndex==1)topMargin=dp(2)})
+  }
+  root.addView(modeList,LinearLayout.LayoutParams(-1,dp(86)).apply{topMargin=dp(2);bottomMargin=dp(2)})
   airPanel=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER}
   airPanel.addView(TextView(this).apply{text="AIR MOUSE MODE";textSize=20f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(12),0,dp(12))})
   airPanel.addView(TextView(this).apply{text="Move your phone gently to move the pointer. Keep the phone level, then use the click buttons.";textSize=15f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(dp(10),dp(8),dp(10),dp(16))})
@@ -123,14 +137,17 @@ class MainActivity : Activity() {
   touchPanel.addView(touchClicks,LinearLayout.LayoutParams(-1,dp(50)))
   root.addView(touchPanel,LinearLayout.LayoutParams(-1,0,1f))
   root.addView(airPanel,LinearLayout.LayoutParams(-1,0,1f))
+  keyboardPanel=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=android.view.Gravity.CENTER;visibility=View.GONE}
+  keyboardPanel.addView(TextView(this).apply{text="KEYBOARD MODE";textSize=20f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(8),0,dp(12))},LinearLayout.LayoutParams(-1,dp(44)))
   entry=EditText(this).apply{
-   hint="Type text to send to GX1";setSingleLine(true);textSize=16f
+   hint="Type text to send to GX1";setSingleLine(false);minLines=3;maxLines=5;textSize=18f
    setTextColor(android.graphics.Color.WHITE);setHintTextColor(android.graphics.Color.LTGRAY)
    setBackgroundTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.rgb(65,145,255)))
-   inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+   inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
   }
-  root.addView(entry,LinearLayout.LayoutParams(-1,dp(48)).apply{topMargin=dp(4)})
-  root.addView(Button(this).apply{text="Send text";textSize=15f;setOnClickListener{sendText(entry.text.toString());entry.text.clear()}},LinearLayout.LayoutParams(-1,dp(42)).apply{topMargin=dp(3)})
+  keyboardPanel.addView(entry,LinearLayout.LayoutParams(-1,0,1f).apply{topMargin=dp(8);bottomMargin=dp(8)})
+  keyboardPanel.addView(Button(this).apply{text="Send text";textSize=16f;setOnClickListener{sendText(entry.text.toString());entry.text.clear()}},LinearLayout.LayoutParams(-1,dp(48)))
+  root.addView(keyboardPanel,LinearLayout.LayoutParams(-1,0,1f))
   speedLabel=TextView(this).apply{text="Control sensitivity: 1.4x";textSize=13f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER_VERTICAL}
   root.addView(speedLabel,LinearLayout.LayoutParams(-1,dp(24)).apply{topMargin=dp(2)})
   root.addView(SeekBar(this).apply{max=25;progress=9;setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{
@@ -145,16 +162,17 @@ class MainActivity : Activity() {
   setMode(0)
  }
  private fun setMode(mode:Int){
-  controlMode=mode
+  controlMode=mode.coerceIn(0,3)
   airMode=(controlMode==1)
   tvPanel.visibility=if(controlMode==0)View.VISIBLE else View.GONE
   airPanel.visibility=if(controlMode==1)View.VISIBLE else View.GONE
   touchPanel.visibility=if(controlMode==2)View.VISIBLE else View.GONE
-  modeButton.text=when(controlMode){0->"Mode: TV D-pad  •  Tap to change";1->"Mode: Air Mouse  •  Tap to change";else->"Mode: Mouse Touchpad  •  Tap to change"}
+  keyboardPanel.visibility=if(controlMode==3)View.VISIBLE else View.GONE
+  modeButtons.forEachIndexed{index,b->b.alpha=if(index==controlMode)1f else 0.62f;b.isSelected=index==controlMode}
   lastGyroTime=0L
   if(airMode){
    val s=sensorManager;val g=gyro
-   if(g==null){Toast.makeText(this,"This phone has no gyroscope; Air Mouse unavailable",Toast.LENGTH_LONG).show();airMode=false;controlMode=0;airPanel.visibility=View.GONE;tvPanel.visibility=View.VISIBLE;touchPanel.visibility=View.GONE;modeButton.text="Mode: TV D-pad  •  Tap to change";return}
+   if(g==null){Toast.makeText(this,"This phone has no gyroscope; Air Mouse unavailable",Toast.LENGTH_LONG).show();setMode(0);return}
    s?.registerListener(gyroListener,g,SensorManager.SENSOR_DELAY_GAME)
   }else sensorManager?.unregisterListener(gyroListener)
  }
