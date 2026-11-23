@@ -171,6 +171,7 @@ class MainActivity : Activity() {
   val symbols=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER}
   listOf("-","_","=","+","(",")","@","#","!","?").forEach{label->symbols.addView(keyButton(label,{sendKeyboardChar(label)}),LinearLayout.LayoutParams(0,dp(42),1f).apply{leftMargin=dp(1);rightMargin=dp(1)})}
   keyboardPanel.addView(symbols,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(2)})
+  keyboardPanel.setBackgroundColor(android.graphics.Color.rgb(5,15,34))
   speedLabel=TextView(this).apply{text="Control sensitivity: 1.4x";textSize=13f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER_VERTICAL}
   root.addView(speedLabel,LinearLayout.LayoutParams(-1,dp(24)).apply{topMargin=dp(2)})
   root.addView(SeekBar(this).apply{max=25;progress=9;setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{
@@ -191,6 +192,7 @@ class MainActivity : Activity() {
   airPanel.visibility=if(controlMode==1)View.VISIBLE else View.GONE
   touchPanel.visibility=if(controlMode==2)View.VISIBLE else View.GONE
   keyboardPanel.visibility=if(controlMode==3)View.VISIBLE else View.GONE
+  if(controlMode==3){keyboardPanel.bringToFront();keyboardPanel.requestLayout()}
   modeButtons.forEachIndexed{index,b->b.alpha=if(index==controlMode)1f else 0.62f;b.isSelected=index==controlMode}
   lastGyroTime=0L
   if(airMode){
