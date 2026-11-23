@@ -22,6 +22,15 @@ class MainActivity : Activity() {
  private var capsOn=false
  private var ctrlOn=false
  private var altOn=false
+ private val keyboardKeyButtons=mutableListOf<Pair<Button,String>>()
+ private fun shiftedLabel(label:String):String {
+  if(!shiftOn)return if(label=="~")"`" else label
+  return when(label) {
+   "1"->"!";"2"->"@";"3"->"#";"4"->"$";"5"->"%";"6"->"^";"7"->"&";"8"->"*";"9"->"("; "0"->")"; "-"->"_"; "="->"+"; "["->"{"; "]"->"}"; "\\"->"|"; ";"->":"; "'"->"\u0022"; ","->"<"; "."->">"; "/"->"?"; "~"->"~"; else->label
+  }
+ }
+ private fun refreshKeyboardLabels(){keyboardKeyButtons.forEach{(button,label)->button.text=shiftedLabel(label)}}
+
  private lateinit var modeList:LinearLayout
  private lateinit var keyboardPanel:LinearLayout
  private lateinit var contentHost:FrameLayout
