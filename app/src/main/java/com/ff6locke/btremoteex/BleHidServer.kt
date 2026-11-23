@@ -45,6 +45,7 @@ class BleHidServer(
     private var keyboardReport: BluetoothGattCharacteristic? = null
     private var consumerReport: BluetoothGattCharacteristic? = null
     private val notifyEnabled = mutableSetOf<String>()
+    private var connectedDevice: BluetoothDevice? = null
     @Volatile var isConnected: Boolean = false
         private set
     private var serviceReady = false
@@ -131,7 +132,7 @@ class BleHidServer(
                     status("BLE advertising failed (code $errorCode)")
                 }
             }
-            adv.startAdvertising(settings, data, advertiseCallback)
+            advertiseCallback?.let { adv.startAdvertising(settings, data, it) }
         } catch (e: SecurityException) {
             status("BLE advertising permission denied")
         } catch (e: Exception) {
@@ -146,8 +147,8 @@ class BleHidServer(
                 return
             }
             when (service.uuid) {
-                HID -> server?.addService(batteryService)
-                BATTERY -> server?.addService(deviceInfoService)
+                HID -> batteryService?.let { server?.addService(it) }
+                BATTERY -> deviceInfoService?.let { server?.addService(it) }
                 DEVICE_INFO -> {
                     serviceReady = true
                     beginAdvertising()
@@ -156,9 +157,12 @@ class BleHidServer(
         }
         override fun onConnectionStateChange(device: BluetoothDevice, statusCode: Int, newState: Int) {
             isConnected = newState == BluetoothProfile.STATE_CONNECTED
-            if (isConnected) status("BLE HID connected to ${device.name ?: "host"}")
-            else {
+            if (isConnected) {
+                connectedDevice = device
+                status("BLE HID connected to ${device.name ?: "host"}")
+            } else {
                 notifyEnabled.remove(device.address)
+                connectedDevice = null
                 status("BLE HID disconnected")
             }
         }
@@ -189,7 +193,7 @@ class BleHidServer(
         val c = characteristic ?: return
         if (!isConnected || notifyEnabled.isEmpty()) return
         c.value = value
-        val device = try { manager.connectedDevices.firstOrNull { it.address in notifyEnabled } } catch (_: Exception) { null } ?: return
+        val device = connectedDevice?.takeIf { it.address in notifyEnabled } ?: return
         try {
             if (android.os.Build.VERSION.SDK_INT >= 33) s.notifyCharacteristicChanged(device, c, false, value)
             else {
@@ -211,6 +215,7 @@ class BleHidServer(
         consumerReport = null
         notifyEnabled.clear()
         isConnected = false
+        connectedDevice = null
         serviceReady = false
         batteryService = null
         deviceInfoService = null
