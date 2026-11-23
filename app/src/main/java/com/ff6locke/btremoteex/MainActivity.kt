@@ -22,6 +22,7 @@ class MainActivity : Activity() {
  private var capsOn=false
  private lateinit var modeList:LinearLayout
  private lateinit var keyboardPanel:LinearLayout
+ private lateinit var contentHost:FrameLayout
  private lateinit var modeButtons:MutableList<Button>
  private lateinit var airPanel:LinearLayout
  private lateinit var tvPanel:LinearLayout
@@ -86,6 +87,7 @@ class MainActivity : Activity() {
    modeList.addView(row,LinearLayout.LayoutParams(-1,dp(42)).apply{if(rowIndex==1)topMargin=dp(2)})
   }
   root.addView(modeList,LinearLayout.LayoutParams(-1,dp(86)).apply{topMargin=dp(2);bottomMargin=dp(2)})
+  contentHost=FrameLayout(this)
   airPanel=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER}
   airPanel.addView(TextView(this).apply{text="AIR MOUSE MODE";textSize=20f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(12),0,dp(12))})
   airPanel.addView(TextView(this).apply{text="Move your phone gently to move the pointer. Keep the phone level, then use the click buttons.";textSize=15f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(dp(10),dp(8),dp(10),dp(16))})
@@ -122,7 +124,7 @@ class MainActivity : Activity() {
   systemKeys.addView(systemButton("HOME","⌂",0x0223),LinearLayout.LayoutParams(0,dp(54),1f).apply{leftMargin=dp(2);rightMargin=dp(2)})
   systemKeys.addView(systemButton("MENU","☰",0x0040),LinearLayout.LayoutParams(0,dp(54),1f).apply{leftMargin=dp(3)})
   tvPanel.addView(systemKeys,LinearLayout.LayoutParams(-1,dp(54)).apply{topMargin=dp(5)})
-  root.addView(tvPanel,LinearLayout.LayoutParams(-1,-2))
+  contentHost.addView(tvPanel,FrameLayout.LayoutParams(-1,-1))
   touchPanel=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER;visibility=View.GONE}
   touchPanel.addView(TextView(this).apply{text="MOUSE TOUCHPAD MODE";textSize=19f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(6),0,dp(8))},LinearLayout.LayoutParams(-1,dp(36)))
   touchPanel.addView(TextView(this).apply{text="Slide one finger to move the pointer. Tap to left-click.";textSize=14f;setTextColor(android.graphics.Color.LTGRAY);gravity=android.view.Gravity.CENTER},LinearLayout.LayoutParams(-1,dp(28)))
@@ -136,8 +138,8 @@ class MainActivity : Activity() {
   touchClicks.addView(Button(this).apply{text="LEFT CLICK";setOnClickListener{click(1)}},LinearLayout.LayoutParams(0,dp(48),1f).apply{rightMargin=dp(4)})
   touchClicks.addView(Button(this).apply{text="RIGHT CLICK";setOnClickListener{click(2)}},LinearLayout.LayoutParams(0,dp(48),1f).apply{leftMargin=dp(4)})
   touchPanel.addView(touchClicks,LinearLayout.LayoutParams(-1,dp(50)))
-  root.addView(touchPanel,LinearLayout.LayoutParams(-1,0,1f))
-  root.addView(airPanel,LinearLayout.LayoutParams(-1,0,1f))
+  contentHost.addView(touchPanel,FrameLayout.LayoutParams(-1,-1))
+  contentHost.addView(airPanel,FrameLayout.LayoutParams(-1,-1))
   keyboardPanel=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=android.view.Gravity.CENTER;visibility=View.GONE}
   keyboardPanel.addView(TextView(this).apply{text="KEYBOARD MODE  •  Tap keys to send";textSize=16f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(3),0,dp(5))},LinearLayout.LayoutParams(-1,dp(30)))
   fun keyButton(label:String, action:()->Unit, weight:Float=1f):Button=Button(this).apply{
@@ -192,7 +194,7 @@ class MainActivity : Activity() {
   airPanel.visibility=if(controlMode==1)View.VISIBLE else View.GONE
   touchPanel.visibility=if(controlMode==2)View.VISIBLE else View.GONE
   keyboardPanel.visibility=if(controlMode==3)View.VISIBLE else View.GONE
-  if(controlMode==3){keyboardPanel.bringToFront();keyboardPanel.requestLayout()}
+  if(controlMode==3){keyboardPanel.visibility=View.VISIBLE;keyboardPanel.requestLayout();contentHost.requestLayout()}
   modeButtons.forEachIndexed{index,b->b.alpha=if(index==controlMode)1f else 0.62f;b.isSelected=index==controlMode}
   lastGyroTime=0L
   if(airMode){
