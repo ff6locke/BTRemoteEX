@@ -174,6 +174,8 @@ class MainActivity : Activity() {
   listOf("-","_","=","+","(",")","@","#","!","?").forEach{label->symbols.addView(keyButton(label,{sendKeyboardChar(label)}),LinearLayout.LayoutParams(0,dp(42),1f).apply{leftMargin=dp(1);rightMargin=dp(1)})}
   keyboardPanel.addView(symbols,LinearLayout.LayoutParams(-1,dp(44)).apply{topMargin=dp(2)})
   keyboardPanel.setBackgroundColor(android.graphics.Color.rgb(5,15,34))
+  // Attach the shared mode container to the root; all four mode panels live inside it.
+  root.addView(contentHost,LinearLayout.LayoutParams(-1,0,1f))
   speedLabel=TextView(this).apply{text="Control sensitivity: 1.4x";textSize=13f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER_VERTICAL}
   root.addView(speedLabel,LinearLayout.LayoutParams(-1,dp(24)).apply{topMargin=dp(2)})
   root.addView(SeekBar(this).apply{max=25;progress=9;setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{
