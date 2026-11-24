@@ -1,0 +1,39 @@
+name: Export encrypted Android signing key
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restore existing dpad-gui signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: btrremoteex-debug-signing-key-v2
+
+      - name: Verify and encrypt the existing signing key
+        env:
+          TRANSFER_PASSWORD: ${{ secrets.SIGNING_TRANSFER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$TRANSFER_PASSWORD"
+          test -f ~/.android/debug.keystore
+          ACTUAL="$(keytool -list -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey | sed -n 's/^[[:space:]]*SHA256: //p')"
+          EXPECTED="CD:C6:9D:1E:4D:55:BA:69:37:D2:2B:48:F0:EE:93:79:7B:D3:1D:49:4E:E1:B7:5C:EA:EE:88:FD:C3:D5:25:92"
+          echo "Restored signing certificate: $ACTUAL"
+          test "$ACTUAL" = "$EXPECTED"
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in ~/.android/debug.keystore -out signing-keystore.enc -pass env:TRANSFER_PASSWORD
+          sha256sum signing-keystore.enc
+
+      - name: Upload encrypted signing key
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTRemoteEX-signing-key-encrypted
+          path: signing-keystore.enc
+          retention-days: 90
