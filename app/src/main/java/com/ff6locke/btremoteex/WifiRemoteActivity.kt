@@ -4,6 +4,11 @@ import android.app.Activity
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
+import android.view.MotionEvent
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.widget.*
 import android.graphics.Typeface
 import android.graphics.Color
@@ -254,6 +259,113 @@ class WifiRemoteActivity : Activity() {
             samsungControls.addView(actions, LinearLayout.LayoutParams(-1, -2))
         }
         root.addView(samsungControls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+
+        // Wi-Fi control modes. These controls use the active Samsung/Android TV
+        // connection; pointer motion is translated to directional navigation because
+        // the Samsung WebSocket and Android TV Remote protocols do not expose HID mouse reports.
+        val modeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        val touchPanel = TextView(this).apply {
+            text = "TOUCHPAD\nSwipe to navigate • Tap for OK\nTwo-finger swipe is not available on this TV protocol"
+            textSize = 17f; gravity = Gravity.CENTER; setTextColor(Color.WHITE)
+            background = GradientDrawable().apply { cornerRadius = dp(18).toFloat(); setColor(Color.rgb(20, 43, 73)); setStroke(dp(2), Color.rgb(78, 125, 190)) }
+            setOnTouchListener { _, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> true
+                    MotionEvent.ACTION_UP -> {
+                        val dx = event.x - touchDownX
+                        val dy = event.y - touchDownY
+                        if (kotlin.math.abs(dx) < dp(24) && kotlin.math.abs(dy) < dp(24)) sendSamsungKey("KEY_ENTER")
+                        else if (kotlin.math.abs(dx) > kotlin.math.abs(dy)) sendSamsungKey(if (dx > 0) "KEY_RIGHT" else "KEY_LEFT")
+                        else sendSamsungKey(if (dy > 0) "KEY_DOWN" else "KEY_UP")
+                        true
+                    }
+                    else -> true
+                }
+            }
+        }
+        var touchDownX = 0f
+        var touchDownY = 0f
+        touchPanel.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> { touchDownX = event.x; touchDownY = event.y; true }
+                MotionEvent.ACTION_UP -> {
+                    val dx = event.x - touchDownX
+                    val dy = event.y - touchDownY
+                    if (kotlin.math.abs(dx) < dp(24) && kotlin.math.abs(dy) < dp(24)) sendSamsungKey("KEY_ENTER")
+                    else if (kotlin.math.abs(dx) > kotlin.math.abs(dy)) sendSamsungKey(if (dx > 0) "KEY_RIGHT" else "KEY_LEFT")
+                    else sendSamsungKey(if (dy > 0) "KEY_DOWN" else "KEY_UP")
+                    true
+                }
+                else -> true
+            }
+        }
+        val keyboardPanel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        val keyboardInput = EditText(this).apply {
+            hint = "Type text for the connected TV"; setSingleLine(false); minLines = 2
+            setTextColor(Color.WHITE); setHintTextColor(Color.LTGRAY); textSize = 17f
+            background = GradientDrawable().apply { cornerRadius = dp(8).toFloat(); setColor(Color.rgb(20, 36, 58)); setStroke(dp(1), Color.rgb(78, 125, 190)) }
+        }
+        keyboardPanel.addView(keyboardInput, LinearLayout.LayoutParams(-1, dp(90)))
+        keyboardPanel.addView(Button(this).apply {
+            text = "SEND TEXT"; buttonStyle(this); textSize = 14f
+            setOnClickListener {
+                val value = keyboardInput.text.toString()
+                if (value.isNotEmpty()) {
+                    val session = remoteSession
+                    if (target.selectedItemPosition == 1 && session?.isReady == true) {
+                        try { session.sendText(value); status.text = "Text sent to RockTek GX1." }
+                        catch (e: Exception) { status.text = "Text input failed: ${e.message}" }
+                    } else {
+                        status.text = "Samsung TV text entry depends on its on-screen keyboard; use the TV keyboard for text."
+                    }
+                }
+            }
+        }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(4) })
+
+        val airPanel = TextView(this).apply {
+            text = "AIR MOUSE\nMove your phone to send directional navigation.\nThis is motion navigation, not a free-moving pointer."
+            textSize = 16f; gravity = Gravity.CENTER; setTextColor(Color.WHITE)
+            background = GradientDrawable().apply { cornerRadius = dp(18).toFloat(); setColor(Color.rgb(20, 43, 73)); setStroke(dp(2), Color.rgb(78, 125, 190)) }
+        }
+        var lastMotionKeyAt = 0L
+        val sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+        val gyro = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+        val gyroListener = object : SensorEventListener {
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+            override fun onSensorChanged(event: SensorEvent) {
+                if (airPanel.visibility != View.VISIBLE || !::status.isInitialized) return
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (now - lastMotionKeyAt < 420) return
+                val x = event.values[0]; val y = event.values[1]
+                val key = if (kotlin.math.abs(x) > kotlin.math.abs(y) && kotlin.math.abs(x) > 1.35f)
+                    if (x > 0) "KEY_LEFT" else "KEY_RIGHT"
+                else if (kotlin.math.abs(y) > 1.35f) if (y > 0) "KEY_DOWN" else "KEY_UP" else null
+                if (key != null) { sendSamsungKey(key); lastMotionKeyAt = now }
+            }
+        }
+        fun selectWifiMode(mode: Int) {
+            samsungControls.visibility = if (mode == 0) View.VISIBLE else View.GONE
+            touchPanel.visibility = if (mode == 1) View.VISIBLE else View.GONE
+            airPanel.visibility = if (mode == 2) View.VISIBLE else View.GONE
+            keyboardPanel.visibility = if (mode == 3) View.VISIBLE else View.GONE
+            if (mode == 2) {
+                if (gyro == null) { status.text = "This phone has no gyroscope; Air Mouse motion mode is unavailable."; return }
+                sensorManager.registerListener(gyroListener, gyro, SensorManager.SENSOR_DELAY_GAME)
+            } else sensorManager.unregisterListener(gyroListener)
+        }
+        listOf("D-PAD", "TOUCHPAD", "AIR MOUSE", "KEYBOARD").forEachIndexed { index, label ->
+            modeRow.addView(Button(this).apply {
+                text = label; textSize = 10f; isAllCaps = false; setTextColor(Color.WHITE)
+                setOnClickListener { selectWifiMode(index) }
+            }, LinearLayout.LayoutParams(0, dp(42), 1f).apply { setMargins(dp(2), dp(4), dp(2), dp(4)) })
+        }
+        root.addView(modeRow, LinearLayout.LayoutParams(-1, dp(48)))
+        root.addView(touchPanel, LinearLayout.LayoutParams(-1, dp(220)).apply { topMargin = dp(5) })
+        root.addView(airPanel, LinearLayout.LayoutParams(-1, dp(220)).apply { topMargin = dp(5) })
+        root.addView(keyboardPanel, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+        touchPanel.visibility = View.GONE
+        airPanel.visibility = View.GONE
+        keyboardPanel.visibility = View.GONE
 
         rocktekInfo = TextView(this).apply {
             text = "RockTek GX1 uses Android TV secure pairing. Enter its IP address, tap PAIR, then enter the 6-character code shown on your TV."
