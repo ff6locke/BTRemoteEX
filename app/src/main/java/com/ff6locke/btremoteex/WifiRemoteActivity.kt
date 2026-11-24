@@ -15,6 +15,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
 import java.net.URLEncoder
+import java.net.Socket
 import java.util.concurrent.TimeUnit
 import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
@@ -387,7 +388,15 @@ class WifiRemoteActivity : Activity() {
                 confirmPairButton.visibility = View.VISIBLE
                 status.text = "Enter the code displayed on the RockTek GX1."
             } catch (e: Exception) {
-                status.text = "RockTek pairing failed: ${e.message ?: "check IP and same Wi-Fi"}"
+                status.text = "Pairing failed. Checking GX1 Wi-Fi services…"
+                val ports = withContext(Dispatchers.IO) { scanRemotePorts(ip) }
+                val open = ports.filterValues { it }.keys
+                status.text = if (open.isEmpty()) {
+                    "No remote ports detected (6467, 6466, 5555, 8008, 8009). USB debugging is not required for this test; GX1 may not expose a compatible remote service."
+                } else {
+                    "GX1 responds on port(s): ${open.joinToString()}. We can use this result to select the correct Wi-Fi method."
+                }
+                rocktekInfo.text = "Pairing error: ${e.message ?: "unknown error"}"
             }
         }
     }
@@ -415,6 +424,20 @@ class WifiRemoteActivity : Activity() {
                 status.text = "Pairing code failed: ${e.message ?: "try again"}"
             } finally {
                 confirmPairButton.isEnabled = true
+            }
+        }
+    }
+
+    private fun scanRemotePorts(ip: String): Map<Int, Boolean> {
+        val ports = listOf(6467, 6466, 5555, 8008, 8009)
+        return ports.associateWith { port ->
+            try {
+                Socket().use { socket ->
+                    socket.connect(java.net.InetSocketAddress(ip, port), 900)
+                    true
+                }
+            } catch (_: Exception) {
+                false
             }
         }
     }
