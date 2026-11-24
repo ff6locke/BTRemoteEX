@@ -216,17 +216,30 @@ class WifiRemoteActivity : Activity() {
                     setStroke(dp(1), Color.rgb(78, 125, 190))
                 }
                 if (key == "KEY_UP" || key == "KEY_DOWN" || key == "KEY_LEFT" || key == "KEY_RIGHT") {
+                    var longPressStarted = false
+                    val longPressAction = Runnable {
+                        longPressStarted = true
+                        sendSamsungKeyHold(key, true)
+                    }
                     setOnTouchListener { view, event ->
-                        when (event.action) {
+                        when (event.actionMasked) {
                             android.view.MotionEvent.ACTION_DOWN -> {
+                                longPressStarted = false
                                 view.isPressed = true
-                                sendSamsungKeyHold(key, true)
+                                view.postDelayed(longPressAction, 350L)
                                 true
                             }
-                            android.view.MotionEvent.ACTION_UP,
-                            android.view.MotionEvent.ACTION_CANCEL -> {
+                            android.view.MotionEvent.ACTION_UP -> {
+                                view.removeCallbacks(longPressAction)
                                 view.isPressed = false
-                                sendSamsungKeyHold(key, false)
+                                if (longPressStarted) sendSamsungKeyHold(key, false)
+                                else sendSamsungKey(key)
+                                true
+                            }
+                            android.view.MotionEvent.ACTION_CANCEL -> {
+                                view.removeCallbacks(longPressAction)
+                                view.isPressed = false
+                                if (longPressStarted) sendSamsungKeyHold(key, false)
                                 true
                             }
                             else -> true
