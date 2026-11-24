@@ -387,8 +387,10 @@ class RemoteSession(
     const val FEATURE_POWER = 32
     const val FEATURE_VOLUME = 64
     const val FEATURE_APP_LINK = 512
+    // Match androidtvremote2's default feature set. IME is opt-in there; advertising
+    // it unconditionally can cause incompatibilities with some Android TV Remote Services.
     const val CLIENT_FEATURES =
-      FEATURE_PING or FEATURE_KEY or FEATURE_IME or FEATURE_POWER or FEATURE_VOLUME or FEATURE_APP_LINK
+      FEATURE_PING or FEATURE_KEY or FEATURE_POWER or FEATURE_VOLUME or FEATURE_APP_LINK
 
     private const val PACKAGE_NAME = "atvremote"
     private const val APP_VERSION = "1.0.0"
