@@ -24,6 +24,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 
 /**
  * One remote-control connection to a paired TV on port 6466.
@@ -71,6 +73,10 @@ class RemoteSession(
   private var readerJob: Job? = null
   private val ready = CompletableDeferred<Unit>()
   private val writeLock = Any()
+  // Serialize UI-triggered commands on a background thread, preserving key order.
+  private val commandExecutor = Executors.newSingleThreadExecutor { runnable ->
+    Thread(runnable, "BOX-remote-writer").apply { isDaemon = true }
+  }
   @Volatile private var closedByUs = false
   @Volatile private var closedNotified = false
   @Volatile private var lastSentKey: String = "none"
@@ -121,21 +127,20 @@ class RemoteSession(
   }
 
   fun sendKey(keyCode: Int, direction: Direction) {
-    lastSentKey = "keyCode=$keyCode direction=$direction"
-    log("Sending BOX key: $lastSentKey; activeFeatures=$activeFeatures")
-    send(
+    val msg =
       RemoteMessage.newBuilder()
         .setRemoteKeyInject(
           RemoteKeyInject.newBuilder().setKeyCode(keyCode).setDirection(direction.proto)
         )
         .build()
-    )
+    enqueueCommand("keyCode=$keyCode direction=$direction", msg)
   }
 
   /** Opens a deep link on the TV, e.g. "https://www.netflix.com/title" or "market://...". */
   fun launchApp(url: String) {
     require(url.isNotBlank()) { "App link is empty" }
-    send(
+    enqueueCommand(
+      "appLink",
       RemoteMessage.newBuilder()
         .setRemoteAppLinkLaunchRequest(RemoteAppLinkLaunchRequest.newBuilder().setAppLink(url))
         .build()
@@ -152,7 +157,8 @@ class RemoteSession(
       throw RemoteException("NOT_SUPPORTED", "This TV doesn't accept text input from remotes")
     }
     val ime = RemoteImeObject.newBuilder().setStart(text.length).setEnd(text.length).setValue(text)
-    send(
+    enqueueCommand(
+      "textInput",
       RemoteMessage.newBuilder()
         .setRemoteImeBatchEdit(
           RemoteImeBatchEdit.newBuilder()
@@ -181,9 +187,31 @@ class RemoteSession(
     if (!ready.isCompleted) ready.completeExceptionally(error ?: RemoteException("CLOSED", "Connection closed"))
     conn?.close()
     readerJob?.cancel()
+    commandExecutor.shutdownNow()
   }
 
   // ---------- internals ----------
+
+  /** Queue commands from UI callbacks so socket writes never run on the main thread. */
+  private fun enqueueCommand(label: String, msg: RemoteMessage) {
+    try {
+      commandExecutor.execute {
+        if (label.startsWith("keyCode=")) {
+          lastSentKey = label
+          log("Sending BOX key: $lastSentKey; activeFeatures=$activeFeatures")
+        }
+        try {
+          send(msg)
+        } catch (e: Exception) {
+          val error = e as? RemoteException
+            ?: RemoteException("WRITE_FAILED", "Could not send remote command: ${e.message ?: e.javaClass.simpleName}", e)
+          shutdown(error)
+        }
+      }
+    } catch (e: RejectedExecutionException) {
+      throw RemoteException("NOT_CONNECTED", "Not connected to the TV", e)
+    }
+  }
 
   private fun send(msg: RemoteMessage) {
     val c = conn ?: throw RemoteException("NOT_CONNECTED", "Not connected to the TV")
