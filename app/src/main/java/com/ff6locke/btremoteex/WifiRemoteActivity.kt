@@ -183,7 +183,7 @@ class WifiRemoteActivity : Activity() {
         }, LinearLayout.LayoutParams(-1, dp(38)).apply { topMargin = dp(2) })
 
         if (landscape) {
-            samsungControls.addView(dpad, LinearLayout.LayoutParams(dp(padSize / density * 3 + 8), -2).apply { rightMargin = dp(8) })
+            samsungControls.addView(dpad, LinearLayout.LayoutParams(padSize * 3 + dp(8), -2).apply { rightMargin = dp(8) })
             samsungControls.addView(actions, LinearLayout.LayoutParams(0, -2, 1f))
         } else {
             samsungControls.addView(dpad, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) })
