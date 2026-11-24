@@ -1,7 +1,6 @@
 package com.ff6locke.btremoteex.tvremote
 
 import android.util.Log
-import com.ff6locke.btremoteex.BuildConfig
 import com.ff6locke.btremoteex.tvremote.proto.remote.RemoteAppLinkLaunchRequest
 import com.ff6locke.btremoteex.tvremote.proto.remote.RemoteConfigure
 import com.ff6locke.btremoteex.tvremote.proto.remote.RemoteDeviceInfo
@@ -357,7 +356,7 @@ class RemoteSession(
     }
 
   private fun log(msg: String) {
-    if (BuildConfig.DEBUG) Log.d(TAG, msg)
+    Log.d(TAG, msg)
   }
 
   companion object {
