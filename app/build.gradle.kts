@@ -20,6 +20,15 @@ android {
 dependencies {
  implementation("com.squareup.okhttp3:okhttp:4.12.0")
  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
- implementation("com.google.protobuf:protobuf-java:4.36.2")
+ implementation("com.google.protobuf:protobuf-javalite:4.36.2")
 }
-protobuf { protoc { artifact = "com.google.protobuf:protoc:4.36.2" } }
+protobuf {
+ protoc { artifact = "com.google.protobuf:protoc:4.36.2" }
+ generateProtoTasks {
+  all().configureEach {
+   builtins {
+    named("java") { option("lite") }
+   }
+  }
+ }
+}
