@@ -16,6 +16,13 @@ import okhttp3.WebSocketListener
 import org.json.JSONObject
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
+import com.ff6locke.btremoteex.tvremote.PairingManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class WifiRemoteActivity : Activity() {
     private val client by lazy { OkHttpClient.Builder().connectTimeout(8, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS).build() }
@@ -26,6 +33,10 @@ class WifiRemoteActivity : Activity() {
     private lateinit var samsungControls: LinearLayout
     private lateinit var rocktekInfo: TextView
     private lateinit var connectButton: Button
+    private lateinit var pairingCode: EditText
+    private lateinit var confirmPairButton: Button
+    private val pairingManager = PairingManager()
+    private val activityScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private fun buttonStyle(button: Button) {
         button.setTextColor(Color.WHITE)
@@ -225,13 +236,37 @@ class WifiRemoteActivity : Activity() {
         root.addView(samsungControls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
 
         rocktekInfo = TextView(this).apply {
-            text = "RockTek GX1 Wi-Fi control is not available in this test version. Android TV secure pairing must be added first."
+            text = "RockTek GX1 uses Android TV secure pairing. Enter its IP address, tap PAIR, then enter the 6-character code shown on your TV."
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(Color.LTGRAY)
             setPadding(dp(12), dp(18), dp(12), dp(18))
         }
         root.addView(rocktekInfo, LinearLayout.LayoutParams(-1, -2))
+        pairingCode = EditText(this).apply {
+            hint = "6-character TV pairing code"
+            setSingleLine(true)
+            textSize = 18f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            setHintTextColor(Color.LTGRAY)
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(8).toFloat()
+                setColor(Color.rgb(20, 36, 58))
+                setStroke(dp(1), Color.rgb(78, 125, 190))
+            }
+            visibility = View.GONE
+        }
+        root.addView(pairingCode, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(4) })
+        confirmPairButton = Button(this).apply {
+            text = "CONFIRM PAIRING CODE"
+            buttonStyle(this)
+            textSize = 13f
+            visibility = View.GONE
+            setOnClickListener { finishRocktekPairing() }
+        }
+        root.addView(confirmPairButton, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(4) })
         val scroll = ScrollView(this).apply {
             isFillViewport = true
             clipToPadding = false
@@ -245,7 +280,9 @@ class WifiRemoteActivity : Activity() {
         val samsung = position == 0
         samsungControls.visibility = if (samsung) View.VISIBLE else View.GONE
         rocktekInfo.visibility = if (samsung) View.GONE else View.VISIBLE
-        connectButton.text = if (samsung) "CONNECT TO SAMSUNG TV" else "ROCKTEK PAIRING NOT AVAILABLE"
+        pairingCode.visibility = View.GONE
+        confirmPairButton.visibility = View.GONE
+        connectButton.text = if (samsung) "CONNECT TO SAMSUNG TV" else "PAIR ROCKTEK GX1"
         status.text = if (samsung) "Samsung Smart TV selected." else "RockTek GX1 / Android TV selected."
     }
 
@@ -253,7 +290,7 @@ class WifiRemoteActivity : Activity() {
         val ip = ipInput.text.toString().trim()
         if (ip.isBlank()) { status.text = "Enter the device IP address."; return }
         if (target.selectedItemPosition == 1) {
-            status.text = "RockTek Wi-Fi pairing is not implemented in this version."
+            beginRocktekPairing(ip)
             return
         }
         disconnect(null)
@@ -295,6 +332,52 @@ class WifiRemoteActivity : Activity() {
         })
     }
 
+    private fun beginRocktekPairing(ip: String) {
+        disconnect(null)
+        pairingCode.visibility = View.GONE
+        confirmPairButton.visibility = View.GONE
+        status.text = "Starting secure pairing with RockTek GX1…"
+        activityScope.launch {
+            try {
+                val started = withContext(Dispatchers.IO) {
+                    pairingManager.start(ip, "BTRemoteEX")
+                }
+                rocktekInfo.text = "Pairing request sent to ${started.serverName ?: "RockTek GX1"}. Check the TV screen for its 6-character code."
+                pairingCode.visibility = View.VISIBLE
+                confirmPairButton.visibility = View.VISIBLE
+                status.text = "Enter the code displayed on the RockTek GX1."
+            } catch (e: Exception) {
+                status.text = "RockTek pairing failed: ${e.message ?: "check IP and same Wi-Fi"}"
+            }
+        }
+    }
+
+    private fun finishRocktekPairing() {
+        val code = pairingCode.text.toString().trim()
+        if (code.isBlank()) { status.text = "Enter the 6-character code shown on the TV."; return }
+        confirmPairButton.isEnabled = false
+        status.text = "Verifying pairing code…"
+        activityScope.launch {
+            try {
+                val paired = withContext(Dispatchers.IO) { pairingManager.finish(code) }
+                val ip = ipInput.text.toString().trim()
+                getSharedPreferences("wifi_remote", MODE_PRIVATE).edit()
+                    .putString("rocktek_ip", ip)
+                    .putString("rocktek_cert_${ip}", paired.serverCertFingerprint)
+                    .putBoolean("rocktek_paired_${ip}", true)
+                    .apply()
+                pairingCode.visibility = View.GONE
+                confirmPairButton.visibility = View.GONE
+                rocktekInfo.text = "RockTek GX1 securely paired. Remote controls are being connected next."
+                status.text = "RockTek GX1 pairing successful."
+            } catch (e: Exception) {
+                status.text = "Pairing code failed: ${e.message ?: "try again"}"
+            } finally {
+                confirmPairButton.isEnabled = true
+            }
+        }
+    }
+
     private fun sendSamsungKey(key: String) {
         val ws = socket
         if (ws == null) { status.text = "Connect to the Samsung TV first."; return }
@@ -311,6 +394,8 @@ class WifiRemoteActivity : Activity() {
 
     override fun onDestroy() {
         disconnect(null)
+        pairingManager.cancel()
+        activityScope.cancel()
         client.dispatcher.executorService.shutdown()
         super.onDestroy()
     }
