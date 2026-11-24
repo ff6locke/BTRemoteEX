@@ -74,6 +74,7 @@ class RemoteSession(
   @Volatile private var closedByUs = false
   @Volatile private var closedNotified = false
   @Volatile private var lastSentKey: String = "none"
+  @Volatile private var lastWriteFailure: String? = null
   @Volatile var activeFeatures = CLIENT_FEATURES
     private set
 
@@ -191,8 +192,10 @@ class RemoteSession(
     try {
       synchronized(writeLock) { Framing.writeFrame(c.output, msg.toByteArray()) }
     } catch (e: Exception) {
+      lastWriteFailure = "${e.javaClass.simpleName}: ${e.message ?: "no detail"}"
+      log("Remote write failed after $lastSentKey: $lastWriteFailure")
       c.close()
-      throw RemoteException("CONNECTION_LOST", "Lost the connection to the TV", e)
+      throw RemoteException("WRITE_FAILED", "Could not write remote command ($lastSentKey): $lastWriteFailure", e)
     }
   }
 
@@ -216,6 +219,11 @@ class RemoteSession(
               else RemoteException("CONNECTION_LOST", "Lost the connection to the TV", e)
             is EOFException, is SocketException ->
               if (!ready.isCompleted) pairingRequired(e)
+              else if (lastWriteFailure != null) RemoteException(
+                "WRITE_FAILED",
+                "The phone could not send $lastSentKey (features=$activeFeatures; write error: $lastWriteFailure).",
+                e,
+              )
               else RemoteException(
                 "CONNECTION_LOST",
                 "BOX closed the connection after $lastSentKey (features=$activeFeatures; ${e.javaClass.simpleName}: ${e.message ?: "no detail"}).",
