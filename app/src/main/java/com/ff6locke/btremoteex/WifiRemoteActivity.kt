@@ -111,7 +111,7 @@ class WifiRemoteActivity : Activity() {
             setTextColor(Color.LTGRAY)
             maxLines = 5
             isSingleLine = false
-            isTextSelectable = true
+            setTextIsSelectable(true)
         }
         root.addView(status, LinearLayout.LayoutParams(-1, dp(72)))
 
