@@ -254,7 +254,9 @@ class RemoteSession(
             .setRemoteSetActive(RemoteSetActive.newBuilder().setActive(activeFeatures))
             .build()
         )
-        markReady()
+        // The protocol is not ready for key injection until RemoteStart arrives.
+        // Some Android TV Remote Service builds close the socket if a key is sent
+        // immediately after SetActive.
       }
       msg.hasRemotePingRequest() -> {
         send(
