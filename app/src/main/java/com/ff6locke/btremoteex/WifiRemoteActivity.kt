@@ -17,6 +17,7 @@ import org.json.JSONObject
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 import com.ff6locke.btremoteex.tvremote.PairingManager
+import com.ff6locke.btremoteex.tvremote.RemoteSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -36,6 +37,8 @@ class WifiRemoteActivity : Activity() {
     private lateinit var pairingCode: EditText
     private lateinit var confirmPairButton: Button
     private val pairingManager = PairingManager()
+    private var remoteSession: RemoteSession? = null
+    private var rocktekConnected = false
     private val activityScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private fun buttonStyle(button: Button) {
@@ -278,11 +281,14 @@ class WifiRemoteActivity : Activity() {
     }
     private fun showTarget(position: Int) {
         val samsung = position == 0
-        samsungControls.visibility = if (samsung) View.VISIBLE else View.GONE
+        val ip = ipInput.text.toString().trim()
+        val paired = !samsung && getSharedPreferences("wifi_remote", MODE_PRIVATE).getBoolean("rocktek_paired_$ip", false)
+        samsungControls.visibility = if (samsung || rocktekConnected) View.VISIBLE else View.GONE
         rocktekInfo.visibility = if (samsung) View.GONE else View.VISIBLE
         pairingCode.visibility = View.GONE
         confirmPairButton.visibility = View.GONE
-        connectButton.text = if (samsung) "CONNECT TO SAMSUNG TV" else "PAIR ROCKTEK GX1"
+        connectButton.text = if (samsung) "CONNECT TO SAMSUNG TV" else if (paired) "CONNECT ROCKTEK GX1" else "PAIR ROCKTEK GX1"
+        if (!samsung) rocktekInfo.text = if (paired) "RockTek GX1 is paired. Tap CONNECT to open the remote." else "RockTek GX1 uses Android TV secure pairing. Enter its IP address, tap PAIR, then enter the 6-character code shown on your TV."
         status.text = if (samsung) "Samsung Smart TV selected." else "RockTek GX1 / Android TV selected."
     }
 
@@ -290,7 +296,14 @@ class WifiRemoteActivity : Activity() {
         val ip = ipInput.text.toString().trim()
         if (ip.isBlank()) { status.text = "Enter the device IP address."; return }
         if (target.selectedItemPosition == 1) {
-            beginRocktekPairing(ip)
+            val prefs = getSharedPreferences("wifi_remote", MODE_PRIVATE)
+            if (prefs.getBoolean("rocktek_paired_$ip", false)) {
+                val fingerprint = prefs.getString("rocktek_cert_$ip", null)
+                if (fingerprint.isNullOrBlank()) { status.text = "Pairing record missing. Pair the GX1 again."; return }
+                connectRocktekRemote(ip, fingerprint)
+            } else {
+                beginRocktekPairing(ip)
+            }
             return
         }
         disconnect(null)
@@ -368,8 +381,9 @@ class WifiRemoteActivity : Activity() {
                     .apply()
                 pairingCode.visibility = View.GONE
                 confirmPairButton.visibility = View.GONE
-                rocktekInfo.text = "RockTek GX1 securely paired. Remote controls are being connected next."
-                status.text = "RockTek GX1 pairing successful."
+                rocktekInfo.text = "RockTek GX1 securely paired. Connecting remote…"
+                status.text = "Pairing successful. Connecting to GX1…"
+                connectRocktekRemote(ip, paired.serverCertFingerprint)
             } catch (e: Exception) {
                 status.text = "Pairing code failed: ${e.message ?: "try again"}"
             } finally {
@@ -378,7 +392,76 @@ class WifiRemoteActivity : Activity() {
         }
     }
 
+    private fun connectRocktekRemote(ip: String, fingerprint: String) {
+        remoteSession?.close()
+        rocktekConnected = false
+        samsungControls.visibility = View.GONE
+        status.text = "Connecting securely to RockTek GX1…"
+        val session = RemoteSession(ip, fingerprint, object : RemoteSession.Listener {
+            override fun onReady(session: RemoteSession) {
+                runOnUiThread {
+                    rocktekConnected = true
+                    samsungControls.visibility = View.VISIBLE
+                    rocktekInfo.text = "Connected to RockTek GX1. Use the remote buttons below."
+                    status.text = "RockTek GX1 connected."
+                }
+            }
+            override fun onClosed(session: RemoteSession, error: RemoteSession.RemoteException?) {
+                runOnUiThread {
+                    if (remoteSession === session) {
+                        rocktekConnected = false
+                        samsungControls.visibility = View.GONE
+                        status.text = error?.message ?: "RockTek GX1 disconnected."
+                    }
+                }
+            }
+            override fun onPowerState(isOn: Boolean) {}
+            override fun onVolume(level: Int, max: Int, muted: Boolean) {}
+            override fun onCurrentApp(packageName: String) {}
+            override fun onDeviceInfo(vendor: String, model: String, appVersion: String) {
+                runOnUiThread { rocktekInfo.text = "Connected: $vendor $model".trim() }
+            }
+            override fun onImeShow(currentText: String) {}
+        })
+        remoteSession = session
+        activityScope.launch {
+            try {
+                withContext(Dispatchers.IO) { session.connect(activityScope) }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    rocktekConnected = false
+                    samsungControls.visibility = View.GONE
+                    status.text = "RockTek connection failed: ${e.message ?: "try pairing again"}"
+                }
+            }
+        }
+    }
+
     private fun sendSamsungKey(key: String) {
+        if (target.selectedItemPosition == 1) {
+            val keyCode = when (key) {
+                "KEY_UP" -> 19
+                "KEY_DOWN" -> 20
+                "KEY_LEFT" -> 21
+                "KEY_RIGHT" -> 22
+                "KEY_ENTER" -> 66
+                "KEY_RETURN" -> 4
+                "KEY_HOME" -> 3
+                "KEY_MENU" -> 82
+                "KEY_VOLUP" -> 24
+                "KEY_VOLDOWN" -> 25
+                "KEY_MUTE" -> 164
+                "KEY_CHUP" -> 166
+                "KEY_CHDOWN" -> 167
+                "KEY_SOURCE" -> 178
+                else -> return
+            }
+            val session = remoteSession
+            if (session == null || !session.isReady) { status.text = "Connect to RockTek GX1 first."; return }
+            try { session.sendKey(keyCode, RemoteSession.Direction.SHORT) }
+            catch (e: Exception) { status.text = "Could not send key: ${e.message}" }
+            return
+        }
         val ws = socket
         if (ws == null) { status.text = "Connect to the Samsung TV first."; return }
         val payload = JSONObject().put("method", "ms.remote.control").put("params",
@@ -389,6 +472,9 @@ class WifiRemoteActivity : Activity() {
     private fun disconnect(message: String?) {
         socket?.close(1000, "User disconnected")
         socket = null
+        remoteSession?.close()
+        remoteSession = null
+        rocktekConnected = false
         if (message != null && ::status.isInitialized) status.text = message
     }
 
