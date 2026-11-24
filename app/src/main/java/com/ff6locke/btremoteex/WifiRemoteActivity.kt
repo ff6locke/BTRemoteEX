@@ -123,7 +123,7 @@ class WifiRemoteActivity : Activity() {
                 setColor(Color.rgb(20, 36, 58))
                 setStroke(dp(1), Color.rgb(78, 125, 190))
             }
-            val deviceNames = listOf("TV", "TVBOX")
+            val deviceNames = listOf("TV", "BOX")
             adapter = object : ArrayAdapter<String>(this@WifiRemoteActivity, android.R.layout.simple_spinner_item, deviceNames) {
                 override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
                     val label = (convertView as? TextView) ?: TextView(this@WifiRemoteActivity)
@@ -185,7 +185,7 @@ class WifiRemoteActivity : Activity() {
         }
         connectionRow.addView(connectButton, LinearLayout.LayoutParams(0, dp(44), 1.05f))
         root.addView(TextView(this).apply {
-            text = "SELECT DEVICE  •  TV / TVBOX"
+            text = "SELECT DEVICE  •  TV / BOX"
             textSize = 13f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER_VERTICAL
@@ -213,7 +213,26 @@ class WifiRemoteActivity : Activity() {
                     setColor(if (accent) Color.rgb(0, 112, 245) else Color.rgb(35, 65, 105))
                     setStroke(dp(1), Color.rgb(78, 125, 190))
                 }
-                setOnClickListener { sendSamsungKey(key) }
+                if (key == "KEY_UP" || key == "KEY_DOWN" || key == "KEY_LEFT" || key == "KEY_RIGHT") {
+                    setOnTouchListener { view, event ->
+                        when (event.action) {
+                            android.view.MotionEvent.ACTION_DOWN -> {
+                                view.isPressed = true
+                                sendSamsungKeyHold(key, true)
+                                true
+                            }
+                            android.view.MotionEvent.ACTION_UP,
+                            android.view.MotionEvent.ACTION_CANCEL -> {
+                                view.isPressed = false
+                                sendSamsungKeyHold(key, false)
+                                true
+                            }
+                            else -> true
+                        }
+                    }
+                } else {
+                    setOnClickListener { sendSamsungKey(key) }
+                }
             }
         val dpad = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
         val topRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
@@ -306,7 +325,7 @@ class WifiRemoteActivity : Activity() {
                 if (value.isNotEmpty()) {
                     val session = remoteSession
                     if (target.selectedItemPosition == 1 && session?.isReady == true) {
-                        try { session.sendText(value); status.text = "Text sent to RockTek GX1." }
+                        try { session.sendText(value); status.text = "Text sent to BOX." }
                         catch (e: Exception) { status.text = "Text input failed: ${e.message}" }
                     } else {
                         status.text = "Samsung TV text entry depends on its on-screen keyboard; use the TV keyboard for text."
@@ -361,7 +380,7 @@ class WifiRemoteActivity : Activity() {
         keyboardPanel.visibility = View.GONE
 
         rocktekInfo = TextView(this).apply {
-            text = "RockTek GX1 uses Android TV secure pairing. Enter its IP address, tap PAIR, then enter the 6-character code shown on your TV."
+            text = "BOX uses Android TV secure pairing. Enter its IP address, tap PAIR, then enter the 6-character code shown on your TV."
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(Color.LTGRAY)
@@ -452,9 +471,9 @@ class WifiRemoteActivity : Activity() {
         rocktekInfo.visibility = if (samsung) View.GONE else View.VISIBLE
         pairingCode.visibility = View.GONE
         confirmPairButton.visibility = View.GONE
-        connectButton.text = if (samsung) "CONNECT TV" else if (paired) "CONNECT TVBOX" else "PAIR TVBOX"
-        if (!samsung) rocktekInfo.text = if (paired) "RockTek GX1 is paired. Tap CONNECT to open the remote." else "RockTek GX1 uses Android TV secure pairing. Enter its IP address, tap PAIR, then enter the 6-character code shown on your TV."
-        status.text = if (samsung) "Samsung Smart TV selected." else "RockTek GX1 / Android TV selected."
+        connectButton.text = if (samsung) "CONNECT TV" else if (paired) "CONNECT BOX" else "PAIR BOX"
+        if (!samsung) rocktekInfo.text = if (paired) "BOX is paired. Tap CONNECT to open the remote." else "BOX uses Android TV secure pairing. Enter its IP address, tap PAIR, then enter the 6-character code shown on your TV."
+        status.text = if (samsung) "Samsung Smart TV selected." else "BOX / Android TV selected."
     }
 
     private fun connectSelected() {
@@ -525,16 +544,16 @@ class WifiRemoteActivity : Activity() {
         disconnect(null)
         pairingCode.visibility = View.GONE
         confirmPairButton.visibility = View.GONE
-        status.text = "Starting secure pairing with RockTek GX1…"
+        status.text = "Starting secure pairing with BOX…"
         activityScope.launch {
             try {
                 val started = withContext(Dispatchers.IO) {
                     pairingManager.start(ip, "BTRemoteEX")
                 }
-                rocktekInfo.text = "Pairing request sent to ${started.serverName ?: "RockTek GX1"}. Check the TV screen for its 6-character code."
+                rocktekInfo.text = "Pairing request sent to ${started.serverName ?: "BOX"}. Check the TV screen for its 6-character code."
                 pairingCode.visibility = View.VISIBLE
                 confirmPairButton.visibility = View.VISIBLE
-                status.text = "Enter the code displayed on the RockTek GX1."
+                status.text = "Enter the code displayed on the BOX."
             } catch (e: Exception) {
                 status.text = "Pairing failed. Checking GX1 Wi-Fi services…"
                 val ports = withContext(Dispatchers.IO) { scanRemotePorts(ip) }
@@ -566,7 +585,7 @@ class WifiRemoteActivity : Activity() {
                     .apply()
                 pairingCode.visibility = View.GONE
                 confirmPairButton.visibility = View.GONE
-                rocktekInfo.text = "RockTek GX1 securely paired. Connecting remote…"
+                rocktekInfo.text = "BOX securely paired. Connecting remote…"
                 status.text = "Pairing successful. Connecting to GX1…"
                 connectRocktekRemote(ip, paired.serverCertFingerprint)
             } catch (e: Exception) {
@@ -595,14 +614,14 @@ class WifiRemoteActivity : Activity() {
         remoteSession?.close()
         rocktekConnected = false
         samsungControls.visibility = View.GONE
-        status.text = "Connecting securely to RockTek GX1…"
+        status.text = "Connecting securely to BOX…"
         val session = RemoteSession(ip, fingerprint, object : RemoteSession.Listener {
             override fun onReady(session: RemoteSession) {
                 runOnUiThread {
                     rocktekConnected = true
                     samsungControls.visibility = View.VISIBLE
-                    rocktekInfo.text = "Connected to RockTek GX1. Use the remote buttons below."
-                    status.text = "RockTek GX1 connected."
+                    rocktekInfo.text = "Connected to BOX. Use the remote buttons below."
+                    status.text = "BOX connected."
                 }
             }
             override fun onClosed(session: RemoteSession, error: RemoteSession.RemoteException?) {
@@ -610,7 +629,7 @@ class WifiRemoteActivity : Activity() {
                     if (remoteSession === session) {
                         rocktekConnected = false
                         samsungControls.visibility = View.GONE
-                        status.text = error?.message ?: "RockTek GX1 disconnected."
+                        status.text = error?.message ?: "BOX disconnected."
                     }
                 }
             }
@@ -636,6 +655,41 @@ class WifiRemoteActivity : Activity() {
         }
     }
 
+    private fun sendSamsungKeyHold(key: String, pressed: Boolean) {
+        if (target.selectedItemPosition == 1) {
+            val keyCode = when (key) {
+                "KEY_UP" -> 19
+                "KEY_DOWN" -> 20
+                "KEY_LEFT" -> 21
+                "KEY_RIGHT" -> 22
+                else -> return
+            }
+            val session = remoteSession
+            if (session == null || !session.isReady) {
+                if (pressed) status.text = "Connect to BOX first."
+                return
+            }
+            try {
+                session.sendKey(
+                    keyCode,
+                    if (pressed) RemoteSession.Direction.START_LONG else RemoteSession.Direction.END_LONG
+                )
+            } catch (e: Exception) {
+                if (pressed) status.text = "Could not send key: ${e.message}"
+            }
+            return
+        }
+        val ws = socket
+        if (ws == null) {
+            if (pressed) status.text = "Connect to the TV first."
+            return
+        }
+        val payload = JSONObject().put("method", "ms.remote.control").put("params",
+            JSONObject().put("Cmd", if (pressed) "Press" else "Release")
+                .put("DataOfCmd", key).put("Option", "false").put("TypeOfRemote", "SendRemoteKey"))
+        if (!ws.send(payload.toString()) && pressed) status.text = "Could not send key. Reconnect to the TV."
+    }
+
     private fun sendSamsungKey(key: String) {
         if (target.selectedItemPosition == 1) {
             val keyCode = when (key) {
@@ -656,7 +710,7 @@ class WifiRemoteActivity : Activity() {
                 else -> return
             }
             val session = remoteSession
-            if (session == null || !session.isReady) { status.text = "Connect to RockTek GX1 first."; return }
+            if (session == null || !session.isReady) { status.text = "Connect to BOX first."; return }
             try { session.sendKey(keyCode, RemoteSession.Direction.SHORT) }
             catch (e: Exception) { status.text = "Could not send key: ${e.message}" }
             return
