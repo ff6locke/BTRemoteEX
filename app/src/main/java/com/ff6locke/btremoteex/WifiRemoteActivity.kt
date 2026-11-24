@@ -82,9 +82,34 @@ class WifiRemoteActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
         }
         target = Spinner(this).apply {
-            adapter = ArrayAdapter(this@WifiRemoteActivity, android.R.layout.simple_spinner_item,
-                listOf("Samsung TV", "RockTek GX1")).also {
-                it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            background = GradientDrawable().apply {
+                cornerRadius = dp(8).toFloat()
+                setColor(Color.rgb(20, 36, 58))
+                setStroke(dp(1), Color.rgb(78, 125, 190))
+            }
+            val deviceNames = listOf("Samsung TV", "RockTek GX1")
+            adapter = object : ArrayAdapter<String>(this@WifiRemoteActivity, android.R.layout.simple_spinner_item, deviceNames) {
+                override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
+                    val label = (convertView as? TextView) ?: TextView(this@WifiRemoteActivity)
+                    label.text = getItem(position)
+                    label.setTextColor(Color.WHITE)
+                    label.textSize = 14f
+                    label.typeface = Typeface.DEFAULT_BOLD
+                    label.gravity = Gravity.CENTER_VERTICAL
+                    label.setPadding(dp(10), 0, dp(6), 0)
+                    label.maxLines = 1
+                    return label
+                }
+                override fun getDropDownView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
+                    val label = (convertView as? TextView) ?: TextView(this@WifiRemoteActivity)
+                    label.text = getItem(position)
+                    label.setTextColor(Color.WHITE)
+                    label.textSize = 14f
+                    label.gravity = Gravity.CENTER_VERTICAL
+                    label.setPadding(dp(12), dp(10), dp(12), dp(10))
+                    label.setBackgroundColor(Color.rgb(20, 36, 58))
+                    return label
+                }
             }
             onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                 override fun onNothingSelected(parent: AdapterView<*>?) {}
