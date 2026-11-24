@@ -143,7 +143,7 @@ class WifiRemoteActivity : Activity() {
             isFillViewport = true
             clipToPadding = false
             setPadding(0, 0, 0, pad)
-            addView(root, ScrollView.LayoutParams(-1, -2))
+            addView(root, android.view.ViewGroup.LayoutParams(-1, -2))
         }
         setContentView(scroll)
         target.setSelection(0)
