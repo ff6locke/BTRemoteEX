@@ -16,6 +16,9 @@ import okhttp3.WebSocketListener
 import org.json.JSONObject
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
+import java.security.cert.X509Certificate
+import javax.net.ssl.SSLContext
+import javax.net.ssl.X509TrustManager
 import com.ff6locke.btremoteex.tvremote.PairingManager
 import com.ff6locke.btremoteex.tvremote.RemoteSession
 import kotlinx.coroutines.CoroutineScope
@@ -26,7 +29,20 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class WifiRemoteActivity : Activity() {
-    private val client by lazy { OkHttpClient.Builder().connectTimeout(8, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS).build() }
+    private val client by lazy {
+        val trustManager = object : X509TrustManager {
+            override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+            override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+            override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+        }
+        val sslContext = SSLContext.getInstance("TLS").apply { init(null, arrayOf(trustManager), java.security.SecureRandom()) }
+        OkHttpClient.Builder()
+            .connectTimeout(8, TimeUnit.SECONDS)
+            .readTimeout(0, TimeUnit.MILLISECONDS)
+            .sslSocketFactory(sslContext.socketFactory, trustManager)
+            .hostnameVerifier { _, _ -> true }
+            .build()
+    }
     private var socket: WebSocket? = null
     private lateinit var status: TextView
     private lateinit var ipInput: EditText
@@ -308,18 +324,23 @@ class WifiRemoteActivity : Activity() {
             return
         }
         disconnect(null)
-        status.text = "Connecting to Samsung TV… approve the access request on the TV if prompted."
-        val name = URLEncoder.encode("BTRemoteEX", "UTF-8")
+        connectSamsung(ip, secure = true)
+
+    }
+
+    private fun connectSamsung(ip: String, secure: Boolean) {
         val savedToken = getSharedPreferences("wifi_remote", MODE_PRIVATE).getString("samsung_token_$ip", null)
-        val scheme = if (savedToken == null) "ws" else "wss"
-        val port = if (savedToken == null) 8001 else 8002
-        val tokenParam = savedToken ?: ""
+        val appName = android.util.Base64.encodeToString("BTRemoteEX".toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)
+        val scheme = if (secure) "wss" else "ws"
+        val port = if (secure) 8002 else 8001
+        val tokenPart = if (savedToken.isNullOrBlank()) "" else "&token=${URLEncoder.encode(savedToken, "UTF-8")}"
         val request = Request.Builder()
-            .url("$scheme://$ip:$port/api/v2/channels/samsung.remote.control?name=$name&token=$tokenParam")
+            .url("$scheme://$ip:$port/api/v2/channels/samsung.remote.control?name=${URLEncoder.encode(appName, "UTF-8")}$tokenPart")
             .build()
+        status.text = if (secure) "Trying secure Samsung connection (8002)…" else "Trying Samsung compatibility connection (8001)…"
         socket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                runOnUiThread { status.text = "Samsung link opened. Accept the prompt on your TV if shown." }
+                runOnUiThread { status.text = "Samsung link opened. Accept the access prompt on your TV if shown." }
             }
             override fun onMessage(webSocket: WebSocket, text: String) {
                 try {
@@ -331,16 +352,21 @@ class WifiRemoteActivity : Activity() {
                     }
                     runOnUiThread {
                         if (event == "ms.channel.connect") status.text = "Samsung TV connected."
-                        else if (event == "ms.channel.unauthorized") status.text = "TV did not authorize BTRemoteEX. Allow it on the TV and reconnect."
+                        else if (event == "ms.channel.unauthorized") status.text = "TV denied access. Allow BTRemoteEX in the TV device notification/list, then reconnect."
                     }
                 } catch (_: Exception) { }
             }
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                runOnUiThread { status.text = "Samsung connection failed: ${t.message ?: "check TV IP and same Wi-Fi"}" }
-                socket = null
+                if (secure) {
+                    socket = null
+                    runOnUiThread { connectSamsung(ip, secure = false) }
+                } else {
+                    runOnUiThread { status.text = "Samsung connection failed on 8002 and 8001: ${t.message ?: "TV closed the connection"}" }
+                    socket = null
+                }
             }
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                runOnUiThread { status.text = "Samsung TV disconnected." }
+                runOnUiThread { status.text = "Samsung TV disconnected (code $code)." }
                 socket = null
             }
         })
