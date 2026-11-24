@@ -17,3 +17,6 @@ android {
  buildTypes { getByName("debug") { signingConfig = signingConfigs.getByName("debug") } }
  kotlinOptions { jvmTarget = "17" }
 }
+dependencies {
+ implementation("com.squareup.okhttp3:okhttp:4.12.0")
+}
