@@ -41,3 +41,5 @@ jobs:
           name: BTRemoteEX-signing-key-encrypted
           path: signing-keystore.enc
           retention-days: 90
+
+# Triggered again after the repository secret was confirmed.
