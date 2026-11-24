@@ -103,15 +103,17 @@ class WifiRemoteActivity : Activity() {
             setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
         }, LinearLayout.LayoutParams(0, dp(30), 1f))
+        root.addView(heading, LinearLayout.LayoutParams(-1, dp(30)))
         status = TextView(this).apply {
             text = "Connect both devices to the same Wi-Fi."
             textSize = 12f
-            gravity = Gravity.CENTER_VERTICAL or Gravity.END
+            gravity = Gravity.CENTER_VERTICAL or Gravity.START
             setTextColor(Color.LTGRAY)
-            maxLines = 1
+            maxLines = 5
+            isSingleLine = false
+            isTextSelectable = true
         }
-        heading.addView(status, LinearLayout.LayoutParams(0, dp(30), 2f))
-        root.addView(heading, LinearLayout.LayoutParams(-1, dp(30)))
+        root.addView(status, LinearLayout.LayoutParams(-1, dp(72)))
 
         val connectionRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
