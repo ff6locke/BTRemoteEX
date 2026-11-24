@@ -81,6 +81,7 @@ class RemoteSession(
   @Volatile private var closedNotified = false
   @Volatile private var lastSentKey: String = "none"
   @Volatile private var lastWriteFailure: String? = null
+  @Volatile private var lastTvMessage: String = "none"
   @Volatile var activeFeatures = CLIENT_FEATURES
     private set
 
@@ -231,6 +232,7 @@ class RemoteSession(
     try {
       while (true) {
         val msg = RemoteMessage.parseFrom(Framing.readFrame(c.input))
+        lastTvMessage = messageKind(msg)
         if (!msg.hasRemotePingRequest() || LOG_PINGS) log("← ${describe(msg)}")
         handle(msg)
       }
@@ -254,7 +256,7 @@ class RemoteSession(
               )
               else RemoteException(
                 "CONNECTION_LOST",
-                "BOX closed the connection after $lastSentKey (features=$activeFeatures; ${e.javaClass.simpleName}: ${e.message ?: "no detail"}).",
+                "BOX closed the connection after $lastSentKey (features=$activeFeatures; last TV message=$lastTvMessage; ${e.javaClass.simpleName}: ${e.message ?: "no detail"}).",
                 e,
               )
             is RemoteException -> e
@@ -389,6 +391,20 @@ class RemoteSession(
         )
       is SSLException -> pairingRequired(e)
       else -> RemoteException("CONNECT_FAILED", e.message ?: "Couldn't connect to the TV", e)
+    }
+
+  private fun messageKind(m: RemoteMessage): String =
+    when {
+      m.hasRemoteConfigure() -> "Configure"
+      m.hasRemoteSetActive() -> "SetActive"
+      m.hasRemotePingRequest() -> "PingRequest"
+      m.hasRemoteStart() -> "RemoteStart"
+      m.hasRemoteError() -> "RemoteError"
+      m.hasRemoteSetVolumeLevel() -> "Volume"
+      m.hasRemoteImeKeyInject() -> "IME key update"
+      m.hasRemoteImeShowRequest() -> "IME show"
+      m.hasRemoteImeBatchEdit() -> "IME batch"
+      else -> "Other message"
     }
 
   private fun describe(m: RemoteMessage): String =
