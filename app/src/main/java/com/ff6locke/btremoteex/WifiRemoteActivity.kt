@@ -104,31 +104,62 @@ class WifiRemoteActivity : Activity() {
         root.addView(connectButton, LinearLayout.LayoutParams(-1, 56).apply { topMargin = 8 })
 
         samsungControls = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val keys = listOf(
-            listOf("POWER" to "KEY_POWER"),
-            listOf("▲" to "KEY_UP"),
-            listOf("◀" to "KEY_LEFT", "OK" to "KEY_ENTER", "▶" to "KEY_RIGHT"),
-            listOf("▼" to "KEY_DOWN"),
-            listOf("BACK" to "KEY_RETURN", "HOME" to "KEY_HOME", "MENU" to "KEY_MENU"),
-            listOf("VOL +" to "KEY_VOLUP", "MUTE" to "KEY_MUTE", "VOL −" to "KEY_VOLDOWN"),
-            listOf("CH +" to "KEY_CHUP", "SOURCE" to "KEY_SOURCE", "CH −" to "KEY_CHDOWN")
-        )
-        keys.forEach { rowKeys ->
+        val density = resources.displayMetrics.density
+        fun dp(value: Int) = (value * density).toInt()
+        val screenDp = (resources.displayMetrics.heightPixels / density).toInt()
+        val padSize = dp(((screenDp - 390) / 4).coerceIn(72, 104))
+        fun remoteButton(label: String, key: String, accent: Boolean = false): Button =
+            Button(this).apply {
+                text = label
+                textSize = if (label == "OK") 22f else 30f
+                setTextColor(Color.WHITE)
+                isAllCaps = false
+                minHeight = padSize
+                setPadding(dp(2), dp(2), dp(2), dp(2))
+                background = GradientDrawable().apply {
+                    cornerRadius = dp(16).toFloat()
+                    setColor(if (accent) Color.rgb(0, 112, 245) else Color.rgb(35, 65, 105))
+                    setStroke(dp(1), Color.rgb(78, 125, 190))
+                }
+                setOnClickListener { sendSamsungKey(key) }
+            }
+        val dpad = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+        val topRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        topRow.addView(View(this), LinearLayout.LayoutParams(padSize, padSize))
+        topRow.addView(remoteButton("▲", "KEY_UP"), LinearLayout.LayoutParams(padSize, padSize).apply { setMargins(dp(3), 0, dp(3), 0) })
+        topRow.addView(View(this), LinearLayout.LayoutParams(padSize, padSize))
+        dpad.addView(topRow)
+        val middleRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        middleRow.addView(remoteButton("◀", "KEY_LEFT"), LinearLayout.LayoutParams(padSize, padSize).apply { rightMargin = dp(3) })
+        middleRow.addView(remoteButton("OK", "KEY_ENTER", true), LinearLayout.LayoutParams(padSize, padSize).apply { leftMargin = dp(3); rightMargin = dp(3) })
+        middleRow.addView(remoteButton("▶", "KEY_RIGHT"), LinearLayout.LayoutParams(padSize, padSize).apply { leftMargin = dp(3) })
+        dpad.addView(middleRow, LinearLayout.LayoutParams(-1, padSize).apply { topMargin = dp(3); bottomMargin = dp(3) })
+        val bottomRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        bottomRow.addView(View(this), LinearLayout.LayoutParams(padSize, padSize))
+        bottomRow.addView(remoteButton("▼", "KEY_DOWN"), LinearLayout.LayoutParams(padSize, padSize).apply { setMargins(dp(3), 0, dp(3), 0) })
+        bottomRow.addView(View(this), LinearLayout.LayoutParams(padSize, padSize))
+        dpad.addView(bottomRow)
+        samsungControls.addView(dpad, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6); bottomMargin = dp(10) })
+        fun remoteRow(vararg entries: Pair<String, String>) {
             val row = LinearLayout(this).apply { gravity = Gravity.CENTER }
-            rowKeys.forEach { (label, key) ->
+            entries.forEach { (label, key) ->
                 row.addView(Button(this).apply {
                     text = label
                     buttonStyle(this)
+                    textSize = 14f
                     setOnClickListener { sendSamsungKey(key) }
-                }, LinearLayout.LayoutParams(0, 58, 1f).apply { setMargins(4, 4, 4, 4) })
+                }, LinearLayout.LayoutParams(0, dp(50), 1f).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
             }
-            samsungControls.addView(row, LinearLayout.LayoutParams(-1, 66))
+            samsungControls.addView(row, LinearLayout.LayoutParams(-1, dp(56)))
         }
+        remoteRow("BACK" to "KEY_RETURN", "HOME" to "KEY_HOME", "MENU" to "KEY_MENU")
+        remoteRow("VOL +" to "KEY_VOLUP", "MUTE" to "KEY_MUTE", "VOL −" to "KEY_VOLDOWN")
+        remoteRow("CH +" to "KEY_CHUP", "SOURCE" to "KEY_SOURCE", "CH −" to "KEY_CHDOWN")
         samsungControls.addView(Button(this).apply {
             text = "DISCONNECT"
             buttonStyle(this)
             setOnClickListener { disconnect("Disconnected") }
-        }, LinearLayout.LayoutParams(-1, 46).apply { topMargin = 4 })
+        }, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(5) })
 
         rocktekInfo = TextView(this).apply {
             text = "RockTek GX1 Wi-Fi control is not available in this test version.\n\nAndroid TV requires secure pairing before remote commands can be sent. The Samsung buttons are hidden so they cannot be mistaken for RockTek controls."
