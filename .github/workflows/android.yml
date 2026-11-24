@@ -37,7 +37,7 @@ jobs:
      run: |
       set -euo pipefail
       $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)/apksigner verify --print-certs app/build/outputs/apk/debug/app-debug.apk
-      ACTUAL="$($ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)/apksigner verify --print-certs app/build/outputs/apk/debug/app-debug.apk | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
+      ACTUAL="$($ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)/apksigner verify --print-certs app/build/outputs/apk/debug/app-debug.apk | sed -n 's/^V2 Signer: certificate SHA-256 digest: //p')"
       EXPECTED="cdc69d1e4d55ba6937d22b48f0ee93797bd31d494ee1b75ceaee88fdc3d52592"
       test "$ACTUAL" = "$EXPECTED"
    - name: Add GitHub build number to APK filename
