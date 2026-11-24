@@ -109,6 +109,7 @@ class MainActivity : Activity() {
   root.addView(status,LinearLayout.LayoutParams(-1,dp(24)))
   root.addView(Button(this).apply{text="Connect Classic Bluetooth HID";textSize=14f;isAllCaps=false;setOnClickListener{retryHid()}},LinearLayout.LayoutParams(-1,dp(40)))
   root.addView(Button(this).apply{text="Start BLE HID (experimental)";textSize=14f;isAllCaps=false;setOnClickListener{startBleHid()}},LinearLayout.LayoutParams(-1,dp(40)).apply{topMargin=dp(3)})
+  root.addView(Button(this).apply{text="Wi-Fi Mode";textSize=14f;isAllCaps=false;setOnClickListener{startActivity(Intent(this@MainActivity,WifiRemoteActivity::class.java))}},LinearLayout.LayoutParams(-1,dp(40)).apply{topMargin=dp(3)})
   modeList=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(0,dp(3),0,dp(3))}
   modeButtons=mutableListOf()
   val modeNames=listOf("TV D-pad","Air Mouse","Mouse Touchpad","Keyboard")
