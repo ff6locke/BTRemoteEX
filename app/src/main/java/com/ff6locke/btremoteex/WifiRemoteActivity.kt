@@ -50,7 +50,7 @@ class WifiRemoteActivity : Activity() {
         root.addView(target, LinearLayout.LayoutParams(-1, 48))
         ipInput = EditText(this).apply {
             hint = "TV IP address (e.g. 192.168.1.100)"
-            singleLine = true
+            setSingleLine(true)
             textSize = 16f
             setTextColor(-1)
             setHintTextColor(android.graphics.Color.LTGRAY)
