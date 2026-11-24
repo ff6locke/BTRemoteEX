@@ -123,7 +123,7 @@ class WifiRemoteActivity : Activity() {
                 setColor(Color.rgb(20, 36, 58))
                 setStroke(dp(1), Color.rgb(78, 125, 190))
             }
-            val deviceNames = listOf("Samsung TV", "RockTek GX1")
+            val deviceNames = listOf("TV", "TVBOX")
             adapter = object : ArrayAdapter<String>(this@WifiRemoteActivity, android.R.layout.simple_spinner_item, deviceNames) {
                 override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
                     val label = (convertView as? TextView) ?: TextView(this@WifiRemoteActivity)
@@ -178,7 +178,7 @@ class WifiRemoteActivity : Activity() {
         }
         connectionRow.addView(connectButton, LinearLayout.LayoutParams(0, dp(44), 1.2f))
         root.addView(TextView(this).apply {
-            text = "SELECT DEVICE  •  Samsung TV / RockTek GX1"
+            text = "SELECT DEVICE  •  TV / TVBOX"
             textSize = 13f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER_VERTICAL
@@ -403,7 +403,7 @@ class WifiRemoteActivity : Activity() {
         rocktekInfo.visibility = if (samsung) View.GONE else View.VISIBLE
         pairingCode.visibility = View.GONE
         confirmPairButton.visibility = View.GONE
-        connectButton.text = if (samsung) "CONNECT TO SAMSUNG TV" else if (paired) "CONNECT ROCKTEK GX1" else "PAIR ROCKTEK GX1"
+        connectButton.text = if (samsung) "CONNECT TV" else if (paired) "CONNECT TVBOX" else "PAIR TVBOX"
         if (!samsung) rocktekInfo.text = if (paired) "RockTek GX1 is paired. Tap CONNECT to open the remote." else "RockTek GX1 uses Android TV secure pairing. Enter its IP address, tap PAIR, then enter the 6-character code shown on your TV."
         status.text = if (samsung) "Samsung Smart TV selected." else "RockTek GX1 / Android TV selected."
     }
