@@ -268,6 +268,7 @@ class WifiRemoteActivity : Activity() {
             text = "TOUCHPAD\nSwipe to navigate • Tap for OK\nTwo-finger swipe is not available on this TV protocol"
             textSize = 17f; gravity = Gravity.CENTER; setTextColor(Color.WHITE)
             background = GradientDrawable().apply { cornerRadius = dp(18).toFloat(); setColor(Color.rgb(20, 43, 73)); setStroke(dp(2), Color.rgb(78, 125, 190)) }
+        }
         var touchDownX = 0f
         var touchDownY = 0f
         touchPanel.setOnTouchListener { _, event ->
