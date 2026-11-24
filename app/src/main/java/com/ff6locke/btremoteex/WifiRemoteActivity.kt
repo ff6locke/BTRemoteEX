@@ -83,7 +83,7 @@ class WifiRemoteActivity : Activity() {
         val density = resources.displayMetrics.density
         fun dp(value: Int) = (value * density).toInt()
         val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        val padSize = dp(if (landscape) 56 else 48)
+        val padSize = dp(if (landscape) 72 else 68)
         val gap = dp(4)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -155,7 +155,7 @@ class WifiRemoteActivity : Activity() {
                 }
             }
         }
-        connectionRow.addView(target, LinearLayout.LayoutParams(0, dp(44), 1.1f).apply { rightMargin = gap })
+        connectionRow.addView(target, LinearLayout.LayoutParams(0, dp(44), 1.0f).apply { rightMargin = gap })
         ipInput = EditText(this).apply {
             hint = "TV IP address"
             setSingleLine(true)
@@ -169,14 +169,21 @@ class WifiRemoteActivity : Activity() {
                 setStroke(dp(1), Color.rgb(78, 125, 190))
             }
         }
-        connectionRow.addView(ipInput, LinearLayout.LayoutParams(0, dp(44), 1.7f).apply { rightMargin = gap })
+        connectionRow.addView(ipInput, LinearLayout.LayoutParams(0, dp(44), 1.55f).apply { rightMargin = gap })
+        val ipListButton = Button(this).apply {
+            text = "▼"
+            buttonStyle(this)
+            textSize = 14f
+            setOnClickListener { showIpList() }
+        }
+        connectionRow.addView(ipListButton, LinearLayout.LayoutParams(dp(42), dp(44)).apply { rightMargin = gap })
         connectButton = Button(this).apply {
             text = "CONNECT"
             buttonStyle(this)
             textSize = 13f
             setOnClickListener { connectSelected() }
         }
-        connectionRow.addView(connectButton, LinearLayout.LayoutParams(0, dp(44), 1.2f))
+        connectionRow.addView(connectButton, LinearLayout.LayoutParams(0, dp(44), 1.05f))
         root.addView(TextView(this).apply {
             text = "SELECT DEVICE  •  TV / TVBOX"
             textSize = 13f
@@ -391,11 +398,53 @@ class WifiRemoteActivity : Activity() {
             addView(root, android.view.ViewGroup.LayoutParams(-1, -2))
         }
         setContentView(scroll)
-        ipInput.setText(getSharedPreferences("wifi_remote", MODE_PRIVATE).getString("rocktek_ip", ""))
+        ipInput.setText(getSharedPreferences("wifi_remote", MODE_PRIVATE).getString("samsung_ip",
+            getSharedPreferences("wifi_remote", MODE_PRIVATE).getString("rocktek_ip", "")))
         target.setSelection(0)
         showTarget(0)
     }
+    private fun rememberIp(ip: String) {
+        if (ip.isBlank()) return
+        val prefs = getSharedPreferences("wifi_remote", MODE_PRIVATE)
+        val history = (prefs.getStringSet("known_ips", emptySet()) ?: emptySet()).toMutableSet()
+        history.add(ip)
+        prefs.edit()
+            .putStringSet("known_ips", history)
+            .putString(if (target.selectedItemPosition == 0) "samsung_ip" else "rocktek_ip", ip)
+            .apply()
+    }
+
+    private fun showIpList() {
+        val prefs = getSharedPreferences("wifi_remote", MODE_PRIVATE)
+        val ips = (prefs.getStringSet("known_ips", emptySet()) ?: emptySet()).toMutableSet()
+        prefs.all.keys.forEach { key ->
+            when {
+                key == "samsung_ip" || key == "rocktek_ip" -> prefs.getString(key, null)?.let { ips.add(it) }
+                key.startsWith("samsung_token_") -> ips.add(key.removePrefix("samsung_token_"))
+                key.startsWith("rocktek_cert_") -> ips.add(key.removePrefix("rocktek_cert_"))
+            }
+        }
+        if (ipInput.text.toString().trim().isNotEmpty()) ips.add(ipInput.text.toString().trim())
+        if (ips.isEmpty()) {
+            status.text = "No saved IP addresses yet. Enter an IP and connect first."
+            return
+        }
+        val sorted = ips.filter { it.isNotBlank() }.sorted()
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Select TV IP")
+            .setItems(sorted.toTypedArray()) { _, which ->
+                ipInput.setText(sorted[which])
+                ipInput.setSelection(ipInput.text.length)
+                rememberIp(sorted[which])
+            }
+            .setNegativeButton("CANCEL", null)
+            .show()
+    }
+
     private fun showTarget(position: Int) {
+        val savedIp = getSharedPreferences("wifi_remote", MODE_PRIVATE)
+            .getString(if (position == 0) "samsung_ip" else "rocktek_ip", null)
+        if (!savedIp.isNullOrBlank()) ipInput.setText(savedIp)
         val samsung = position == 0
         val ip = ipInput.text.toString().trim()
         val paired = !samsung && getSharedPreferences("wifi_remote", MODE_PRIVATE).getBoolean("rocktek_paired_$ip", false)
@@ -411,6 +460,7 @@ class WifiRemoteActivity : Activity() {
     private fun connectSelected() {
         val ip = ipInput.text.toString().trim()
         if (ip.isBlank()) { status.text = "Enter the device IP address."; return }
+        rememberIp(ip)
         if (target.selectedItemPosition == 1) {
             val prefs = getSharedPreferences("wifi_remote", MODE_PRIVATE)
             if (prefs.getBoolean("rocktek_paired_$ip", false)) {
@@ -510,6 +560,7 @@ class WifiRemoteActivity : Activity() {
                 val ip = ipInput.text.toString().trim()
                 getSharedPreferences("wifi_remote", MODE_PRIVATE).edit()
                     .putString("rocktek_ip", ip)
+                    .putStringSet("known_ips", ((getSharedPreferences("wifi_remote", MODE_PRIVATE).getStringSet("known_ips", emptySet()) ?: emptySet()) + ip).toMutableSet())
                     .putString("rocktek_cert_${ip}", paired.serverCertFingerprint)
                     .putBoolean("rocktek_paired_${ip}", true)
                     .apply()
