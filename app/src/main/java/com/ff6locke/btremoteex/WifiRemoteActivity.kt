@@ -276,6 +276,7 @@ class WifiRemoteActivity : Activity() {
             addView(root, android.view.ViewGroup.LayoutParams(-1, -2))
         }
         setContentView(scroll)
+        ipInput.setText(getSharedPreferences("wifi_remote", MODE_PRIVATE).getString("rocktek_ip", ""))
         target.setSelection(0)
         showTarget(0)
     }
