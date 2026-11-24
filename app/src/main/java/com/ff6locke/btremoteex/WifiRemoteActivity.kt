@@ -268,21 +268,6 @@ class WifiRemoteActivity : Activity() {
             text = "TOUCHPAD\nSwipe to navigate • Tap for OK\nTwo-finger swipe is not available on this TV protocol"
             textSize = 17f; gravity = Gravity.CENTER; setTextColor(Color.WHITE)
             background = GradientDrawable().apply { cornerRadius = dp(18).toFloat(); setColor(Color.rgb(20, 43, 73)); setStroke(dp(2), Color.rgb(78, 125, 190)) }
-            setOnTouchListener { _, event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> true
-                    MotionEvent.ACTION_UP -> {
-                        val dx = event.x - touchDownX
-                        val dy = event.y - touchDownY
-                        if (kotlin.math.abs(dx) < dp(24) && kotlin.math.abs(dy) < dp(24)) sendSamsungKey("KEY_ENTER")
-                        else if (kotlin.math.abs(dx) > kotlin.math.abs(dy)) sendSamsungKey(if (dx > 0) "KEY_RIGHT" else "KEY_LEFT")
-                        else sendSamsungKey(if (dy > 0) "KEY_DOWN" else "KEY_UP")
-                        true
-                    }
-                    else -> true
-                }
-            }
-        }
         var touchDownX = 0f
         var touchDownY = 0f
         touchPanel.setOnTouchListener { _, event ->
