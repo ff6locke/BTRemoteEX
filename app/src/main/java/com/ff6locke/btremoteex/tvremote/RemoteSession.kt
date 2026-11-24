@@ -301,7 +301,15 @@ class RemoteSession(
         if (!hasImeCounter) imeCounter = edit.imeCounter
         if (!hasImeFieldCounter) imeFieldCounter = edit.fieldCounter
       }
-      msg.hasRemoteError() -> log("TV reported an error: ${msg.remoteError}")
+      msg.hasRemoteError() -> {
+        val detail =
+          if (msg.remoteError.hasMessage()) describe(msg.remoteError.message)
+          else "no rejected-message details"
+        throw RemoteException(
+          "TV_REJECTED_COMMAND",
+          "The TV rejected the remote command (value=${msg.remoteError.value}; $detail).",
+        )
+      }
       else -> {}
     }
   }
