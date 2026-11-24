@@ -1,6 +1,6 @@
 name: Android APK
 on: [push, workflow_dispatch]
-permissions: { contents: read }
+permissions: { contents: read, actions: read }
 jobs:
  build:
   runs-on: ubuntu-latest
@@ -11,22 +11,35 @@ jobs:
    - uses: gradle/actions/setup-gradle@v4
      with:
       gradle-version: '8.10.2'
-   - name: Reuse debug signing key for installable updates
-     uses: actions/cache@v4
+   - name: Download the verified original signing key
+     uses: actions/download-artifact@v4
      with:
-      path: ~/.android/debug.keystore
-      key: btrremoteex-debug-signing-key-v2
-   - name: Create stable debug signing key when absent
+      name: BTRemoteEX-signing-key-encrypted
+      path: signing-transfer
+      repository: ff6locke/BTRemoteEX
+      run-id: 45343489204
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+   - name: Decrypt and verify original signing key
+     env:
+      TRANSFER_PASSWORD: ${{ secrets.SIGNING_TRANSFER_PASSWORD }}
      run: |
+      set -euo pipefail
       mkdir -p ~/.android
-      if [ ! -f ~/.android/debug.keystore ]; then
-       keytool -genkeypair -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-      fi
-   - name: Verify persistent signing key fingerprint
-     run: keytool -list -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey | grep -E "SHA256:|Owner:"
+      test -n "$TRANSFER_PASSWORD"
+      test -f signing-transfer/signing-keystore.enc
+      openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in signing-transfer/signing-keystore.enc -out ~/.android/debug.keystore -pass env:TRANSFER_PASSWORD
+      ACTUAL="$(keytool -list -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey | sed -n 's/^[[:space:]]*SHA256: //p')"
+      EXPECTED="CD:C6:9D:1E:4D:55:BA:69:37:D2:2B:48:F0:EE:93:79:7B:D3:1D:49:4E:E1:B7:5C:EA:EE:88:FD:C3:D5:25:92"
+      echo "Restored signing certificate: $ACTUAL"
+      test "$ACTUAL" = "$EXPECTED"
    - run: gradle assembleDebug
    - name: Verify APK signing certificate
-     run: $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)/apksigner verify --print-certs app/build/outputs/apk/debug/app-debug.apk
+     run: |
+      set -euo pipefail
+      $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)/apksigner verify --print-certs app/build/outputs/apk/debug/app-debug.apk
+      ACTUAL="$($ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)/apksigner verify --print-certs app/build/outputs/apk/debug/app-debug.apk | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
+      EXPECTED="cdc69d1e4d55ba6937d22b48f0ee93797bd31d494ee1b75ceaee88fdc3d52592"
+      test "$ACTUAL" = "$EXPECTED"
    - name: Add GitHub build number to APK filename
      run: cp app/build/outputs/apk/debug/app-debug.apk "BTRemoteEX-v1.15.${GITHUB_RUN_NUMBER}.apk"
    - uses: actions/upload-artifact@v4
@@ -34,4 +47,4 @@ jobs:
       name: BTRemoteEX-v1.15.${{ github.run_number }}
       path: BTRemoteEX-v1.15.${{ github.run_number }}.apk
       retention-days: 14
-# Build D-pad navigation fixes on branch updates.
+# Wi-Fi builds reuse the verified dpad-gui signing certificate.
