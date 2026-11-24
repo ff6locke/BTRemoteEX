@@ -73,6 +73,7 @@ class RemoteSession(
   private val writeLock = Any()
   @Volatile private var closedByUs = false
   @Volatile private var closedNotified = false
+  @Volatile private var lastSentKey: String = "none"
   @Volatile var activeFeatures = CLIENT_FEATURES
     private set
 
@@ -119,6 +120,8 @@ class RemoteSession(
   }
 
   fun sendKey(keyCode: Int, direction: Direction) {
+    lastSentKey = "keyCode=$keyCode direction=$direction"
+    log("Sending BOX key: $lastSentKey; activeFeatures=$activeFeatures")
     send(
       RemoteMessage.newBuilder()
         .setRemoteKeyInject(
@@ -213,7 +216,11 @@ class RemoteSession(
               else RemoteException("CONNECTION_LOST", "Lost the connection to the TV", e)
             is EOFException, is SocketException ->
               if (!ready.isCompleted) pairingRequired(e)
-              else RemoteException("CONNECTION_LOST", "The TV closed the connection", e)
+              else RemoteException(
+                "CONNECTION_LOST",
+                "BOX closed the connection after $lastSentKey (features=$activeFeatures; ${e.javaClass.simpleName}: ${e.message ?: "no detail"}).",
+                e,
+              )
             is RemoteException -> e
             else -> RemoteException("PROTOCOL_ERROR", e.message ?: e.javaClass.simpleName, e)
           }
