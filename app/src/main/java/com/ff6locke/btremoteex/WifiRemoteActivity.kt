@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.widget.*
+import android.graphics.Typeface
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import okhttp3.OkHttpClient
@@ -28,14 +29,17 @@ class WifiRemoteActivity : Activity() {
 
     private fun buttonStyle(button: Button) {
         button.setTextColor(Color.WHITE)
-        button.textSize = 15f
+        button.textSize = 17f
+        button.typeface = Typeface.DEFAULT_BOLD
+        button.gravity = Gravity.CENTER
         button.isAllCaps = false
         button.background = GradientDrawable().apply {
             cornerRadius = 12f
             setColor(Color.rgb(24, 48, 78))
             setStroke(1, Color.rgb(78, 125, 190))
         }
-        button.minimumHeight = 46
+        button.minimumHeight = 56
+        button.setPadding(8, 8, 8, 8)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,7 +56,7 @@ class WifiRemoteActivity : Activity() {
             textSize = 23f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
-        }, LinearLayout.LayoutParams(-1, 52))
+        }, LinearLayout.LayoutParams(-1, 56))
 
         status = TextView(this).apply {
             text = "Connect your phone and target device to the same Wi-Fi network."
@@ -97,7 +101,7 @@ class WifiRemoteActivity : Activity() {
             buttonStyle(this)
             setOnClickListener { connectSelected() }
         }
-        root.addView(connectButton, LinearLayout.LayoutParams(-1, 48).apply { topMargin = 8 })
+        root.addView(connectButton, LinearLayout.LayoutParams(-1, 56).apply { topMargin = 8 })
 
         samsungControls = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val keys = listOf(
@@ -116,9 +120,9 @@ class WifiRemoteActivity : Activity() {
                     text = label
                     buttonStyle(this)
                     setOnClickListener { sendSamsungKey(key) }
-                }, LinearLayout.LayoutParams(0, 48, 1f).apply { setMargins(3, 3, 3, 3) })
+                }, LinearLayout.LayoutParams(0, 58, 1f).apply { setMargins(4, 4, 4, 4) })
             }
-            samsungControls.addView(row, LinearLayout.LayoutParams(-1, 54))
+            samsungControls.addView(row, LinearLayout.LayoutParams(-1, 66))
         }
         samsungControls.addView(Button(this).apply {
             text = "DISCONNECT"
@@ -135,7 +139,13 @@ class WifiRemoteActivity : Activity() {
         }
         root.addView(samsungControls, LinearLayout.LayoutParams(-1, -2))
         root.addView(rocktekInfo, LinearLayout.LayoutParams(-1, -2))
-        setContentView(root)
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            clipToPadding = false
+            setPadding(0, 0, 0, pad)
+            addView(root, ScrollView.LayoutParams(-1, -2))
+        }
+        setContentView(scroll)
         target.setSelection(0)
         showTarget(0)
     }
