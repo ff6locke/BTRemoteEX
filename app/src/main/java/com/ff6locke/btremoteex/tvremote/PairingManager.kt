@@ -1,7 +1,6 @@
 package com.ff6locke.btremoteex.tvremote
 
 import android.util.Log
-import com.ff6locke.btremoteex.BuildConfig
 import com.ff6locke.btremoteex.tvremote.proto.polo.Configuration
 import com.ff6locke.btremoteex.tvremote.proto.polo.Options
 import com.ff6locke.btremoteex.tvremote.proto.polo.OuterMessage
@@ -209,7 +208,7 @@ class PairingManager {
   }
 
   private fun log(msg: String) {
-    if (BuildConfig.DEBUG) Log.d(TAG, msg)
+    Log.d(TAG, msg)
   }
 
   companion object {
