@@ -2,6 +2,10 @@ name: Export encrypted Android signing key
 
 on:
   workflow_dispatch:
+  push:
+    branches: [dpad-gui]
+    paths:
+      - '.github/workflows/export-signing-key.yml'
 
 permissions:
   contents: read
