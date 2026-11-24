@@ -22,3 +22,4 @@ dependencies {
  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
  implementation("com.google.protobuf:protobuf-java:4.36.2")
 }
+protobuf { protoc { artifact = "com.google.protobuf:protoc:4.36.2" } }
