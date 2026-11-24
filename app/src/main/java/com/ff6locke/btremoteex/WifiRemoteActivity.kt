@@ -52,7 +52,7 @@ class WifiRemoteActivity : Activity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(8), dp(4), dp(8), dp(4))
+            setPadding(dp(8), dp(16), dp(8), dp(4))
             setBackgroundColor(Color.rgb(5, 15, 34))
         }
 
@@ -116,7 +116,15 @@ class WifiRemoteActivity : Activity() {
             setOnClickListener { connectSelected() }
         }
         connectionRow.addView(connectButton, LinearLayout.LayoutParams(0, dp(44), 1.2f))
-        root.addView(connectionRow, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(3) })
+        root.addView(TextView(this).apply {
+            text = "SELECT DEVICE  •  Samsung TV / RockTek GX1"
+            textSize = 13f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER_VERTICAL
+            setTextColor(Color.WHITE)
+            setPadding(dp(4), dp(2), dp(4), dp(2))
+        }, LinearLayout.LayoutParams(-1, dp(24)).apply { topMargin = dp(6) })
+        root.addView(connectionRow, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(2) })
 
         samsungControls = LinearLayout(this).apply {
             orientation = if (landscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
