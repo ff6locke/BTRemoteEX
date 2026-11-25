@@ -478,7 +478,7 @@ class WifiRemoteActivity : Activity() {
         val dhcp = wifi.dhcpInfo ?: return@coroutineScope emptyList()
         val localIp = dhcp.ipAddress
         if (localIp == 0) return@coroutineScope emptyList()
-        val mask = if (dhcp.netmask != 0) dhcp.netmask else 0xFFFFFF00
+        val mask = if (dhcp.netmask != 0) dhcp.netmask.toInt() else 0xFFFFFF00
         val base = localIp and mask
         val hosts = (1..254).map { host ->
             val ipInt = base or host
