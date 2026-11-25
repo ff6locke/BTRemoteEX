@@ -2,6 +2,11 @@ package com.ff6locke.btremoteex
 
 import android.app.Activity
 import android.os.Bundle
+import android.net.wifi.WifiManager
+import java.net.InetSocketAddress
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import android.view.Gravity
 import android.view.View
 import android.view.MotionEvent
@@ -157,9 +162,9 @@ class WifiRemoteActivity : Activity() {
                 }
             }
         }
-        connectionRow.addView(target, LinearLayout.LayoutParams(0, dp(44), 1.0f).apply { rightMargin = gap })
+        connectionRow.addView(target, LinearLayout.LayoutParams(0, dp(44), 1.25f).apply { rightMargin = gap })
         ipInput = EditText(this).apply {
-            hint = "TV IP address"
+            hint = if (target.selectedItemPosition == 0) "TV IP address" else "BOX IP address"
             setSingleLine(true)
             textSize = 14f
             setTextColor(Color.WHITE)
@@ -171,7 +176,7 @@ class WifiRemoteActivity : Activity() {
                 setStroke(dp(1), Color.rgb(78, 125, 190))
             }
         }
-        connectionRow.addView(ipInput, LinearLayout.LayoutParams(0, dp(44), 1.55f).apply { rightMargin = gap })
+        connectionRow.addView(ipInput, LinearLayout.LayoutParams(0, dp(44), 1.15f).apply { rightMargin = gap })
         val ipListButton = Button(this).apply {
             text = "▼"
             buttonStyle(this)
@@ -436,6 +441,7 @@ class WifiRemoteActivity : Activity() {
             getSharedPreferences("wifi_remote", MODE_PRIVATE).getString("rocktek_ip", "")))
         target.setSelection(0)
         showTarget(0)
+        startIpDiscovery()
     }
     private fun rememberIp(ip: String) {
         if (ip.isBlank()) return
@@ -448,7 +454,49 @@ class WifiRemoteActivity : Activity() {
             .apply()
     }
 
+    private fun startIpDiscovery() {
+        ipInput.setText("")
+        status.text = "Scanning local Wi-Fi for TV and BOX IP addresses…"
+        activityScope.launch {
+            val found = withContext(Dispatchers.IO) { discoverLocalDevices() }
+            if (found.isNotEmpty()) {
+                val prefs = getSharedPreferences("wifi_remote", MODE_PRIVATE)
+                val history = (prefs.getStringSet("known_ips", emptySet()) ?: emptySet()).toMutableSet()
+                history.addAll(found)
+                prefs.edit().putStringSet("known_ips", history).apply()
+                ipInput.setText(found.first())
+                status.text = "Detected IP address(es): ${found.joinToString()}. Tap ▼ to choose."
+            } else {
+                ipInput.setText("")
+                status.text = "No TV/BOX IP detected. IP field cleared; enter it manually if needed."
+            }
+        }
+    }
+
+    private suspend fun discoverLocalDevices(): List<String> = coroutineScope {
+        val wifi = applicationContext.getSystemService(WIFI_SERVICE) as? WifiManager ?: return@coroutineScope emptyList()
+        val dhcp = wifi.dhcpInfo ?: return@coroutineScope emptyList()
+        val localIp = dhcp.ipAddress
+        if (localIp == 0) return@coroutineScope emptyList()
+        val mask = if (dhcp.netmask != 0) dhcp.netmask else 0xFFFFFF00
+        val base = localIp and mask
+        val hosts = (1..254).map { host ->
+            val ipInt = base or host
+            if (ipInt == localIp) null else "${ipInt and 0xff}.${(ipInt shr 8) and 0xff}.${(ipInt shr 16) and 0xff}.${(ipInt shr 24) and 0xff}"
+        }.filterNotNull()
+        val ports = listOf(6466, 6467, 8001, 8002, 8008)
+        hosts.map { host -> async {
+            for (port in ports) {
+                try {
+                    Socket().use { s -> s.connect(InetSocketAddress(host, port), 160); return@async host }
+                } catch (_: Exception) {}
+            }
+            null
+        } }.awaitAll().filterNotNull().distinct().sorted()
+    }
+
     private fun showIpList() {
+        val title = if (target.selectedItemPosition == 0) "Select TV IP" else "Select BOX IP"
         val prefs = getSharedPreferences("wifi_remote", MODE_PRIVATE)
         val ips = (prefs.getStringSet("known_ips", emptySet()) ?: emptySet()).toMutableSet()
         prefs.all.keys.forEach { key ->
@@ -460,12 +508,12 @@ class WifiRemoteActivity : Activity() {
         }
         if (ipInput.text.toString().trim().isNotEmpty()) ips.add(ipInput.text.toString().trim())
         if (ips.isEmpty()) {
-            status.text = "No saved IP addresses yet. Enter an IP and connect first."
+            status.text = "No IP detected or saved. Enter the IP manually."
             return
         }
         val sorted = ips.filter { it.isNotBlank() }.sorted()
         android.app.AlertDialog.Builder(this)
-            .setTitle("Select TV IP")
+            .setTitle(title)
             .setItems(sorted.toTypedArray()) { _, which ->
                 ipInput.setText(sorted[which])
                 ipInput.setSelection(ipInput.text.length)
@@ -478,6 +526,7 @@ class WifiRemoteActivity : Activity() {
     private fun showTarget(position: Int) {
         val savedIp = getSharedPreferences("wifi_remote", MODE_PRIVATE)
             .getString(if (position == 0) "samsung_ip" else "rocktek_ip", null)
+        ipInput.hint = if (position == 0) "TV IP address" else "BOX IP address"
         if (!savedIp.isNullOrBlank()) ipInput.setText(savedIp)
         val samsung = position == 0
         val ip = ipInput.text.toString().trim()
