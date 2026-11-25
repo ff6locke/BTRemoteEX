@@ -108,7 +108,17 @@ class WifiRemoteActivity : Activity() {
             setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
         }, LinearLayout.LayoutParams(0, dp(30), 1f))
-        root.addView(heading, LinearLayout.LayoutParams(-1, dp(30)))
+        heading.addView(Button(this).apply {
+            text = "Switch to Bluetooth"
+            textSize = 12f
+            isAllCaps = false
+            setOnClickListener {
+                disconnect(null)
+                startActivity(Intent(this@WifiRemoteActivity, MainActivity::class.java))
+                finish()
+            }
+        }, LinearLayout.LayoutParams(dp(150), dp(38)))
+        root.addView(heading, LinearLayout.LayoutParams(-1, dp(38)))
         status = TextView(this).apply {
             text = "Connect both devices to the same Wi-Fi."
             textSize = 12f
