@@ -704,7 +704,16 @@ class WifiRemoteActivity : Activity() {
                     if (remoteSession === session) {
                         rocktekConnected = false
                         samsungControls.visibility = View.GONE
-                        status.text = error?.message ?: "BOX disconnected."
+                        status.text = (error?.message ?: "BOX disconnected.") + " Reconnecting…"
+                        // Keep the selected BOX paired and recover automatically after
+                        // an unexpected socket close. A deliberate disconnect clears
+                        // remoteSession first, so it will not enter this retry path.
+                        activityScope.launch {
+                            kotlinx.coroutines.delay(2000)
+                            if (remoteSession === session && !rocktekConnected) {
+                                connectRocktekRemote(ip, fingerprint)
+                            }
+                        }
                     }
                 }
             }
