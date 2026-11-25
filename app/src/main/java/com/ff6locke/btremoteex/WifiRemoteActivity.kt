@@ -744,13 +744,14 @@ class WifiRemoteActivity : Activity() {
                 if (pressed) status.text = "Connect to BOX first."
                 return
             }
+            // BOX has been disconnecting after directional long-press commands.
+            // For now, avoid START_LONG/END_LONG protocol messages: send one
+            // ordinary SHORT key when the gesture is released instead.
+            if (pressed) return
             try {
-                session.sendKey(
-                    keyCode,
-                    if (pressed) RemoteSession.Direction.START_LONG else RemoteSession.Direction.END_LONG
-                )
+                session.sendKey(keyCode, RemoteSession.Direction.SHORT)
             } catch (e: Exception) {
-                if (pressed) status.text = "Could not send key: ${e.message}"
+                status.text = "Could not send key: ${e.message}"
             }
             return
         }
