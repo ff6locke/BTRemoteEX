@@ -231,7 +231,7 @@ class WifiRemoteActivity : Activity() {
                     setColor(if (accent) Color.rgb(0, 112, 245) else Color.rgb(35, 65, 105))
                     setStroke(dp(1), Color.rgb(78, 125, 190))
                 }
-                if (key == "KEY_UP" || key == "KEY_DOWN" || key == "KEY_LEFT" || key == "KEY_RIGHT") {
+                if (key == "KEY_UP" || key == "KEY_DOWN" || key == "KEY_LEFT" || key == "KEY_RIGHT" || key == "KEY_VOLUP" || key == "KEY_VOLDOWN") {
                     var longPressStarted = false
                     val longPressAction = Runnable {
                         longPressStarted = true
@@ -746,6 +746,8 @@ class WifiRemoteActivity : Activity() {
                 "KEY_DOWN" -> 20
                 "KEY_LEFT" -> 21
                 "KEY_RIGHT" -> 22
+                "KEY_VOLUP" -> 24
+                "KEY_VOLDOWN" -> 25
                 else -> return
             }
             val session = remoteSession
@@ -753,12 +755,12 @@ class WifiRemoteActivity : Activity() {
                 if (pressed) status.text = "Connect to BOX first."
                 return
             }
-            // BOX has been disconnecting after directional long-press commands.
-            // For now, avoid START_LONG/END_LONG protocol messages: send one
-            // ordinary SHORT key when the gesture is released instead.
-            if (pressed) return
+            // START_LONG makes seek/volume repeat while held; END_LONG stops on release.
             try {
-                session.sendKey(keyCode, RemoteSession.Direction.SHORT)
+                session.sendKey(
+                    keyCode,
+                    if (pressed) RemoteSession.Direction.START_LONG else RemoteSession.Direction.END_LONG
+                )
             } catch (e: Exception) {
                 status.text = "Could not send key: ${e.message}"
             }
