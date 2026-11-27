@@ -531,12 +531,10 @@ class WifiRemoteActivity : Activity() {
             if (found.isNotEmpty()) {
                 val prefs = getSharedPreferences("wifi_remote", MODE_PRIVATE)
                 val history = (prefs.getStringSet("known_ips", emptySet()) ?: emptySet()).toMutableSet()
-                val ignored = prefs.getStringSet("ignored_ips", emptySet()) ?: emptySet()
-                val visibleFound = found.filterNot { ignored.contains(it) }
-                history.addAll(visibleFound)
+                history.addAll(found)
                 prefs.edit().putStringSet("known_ips", history).apply()
-                ipInput.setText(visibleFound.firstOrNull().orEmpty())
-                status.text = if (visibleFound.isNotEmpty()) "Detected device IP address(es): ${visibleFound.joinToString()}. Tap ▼ to choose." else "No new devices detected. Tap ▼ to choose a saved device or enter an IP manually."
+                ipInput.setText(found.firstOrNull().orEmpty())
+                status.text = "Detected device IP address(es): ${found.joinToString()}. Tap ▼ to choose."
             } else {
                 ipInput.setText("")
                 status.text = "No TV/BOX IP detected. IP field cleared; enter it manually if needed."
@@ -584,11 +582,10 @@ class WifiRemoteActivity : Activity() {
     private fun showIpList() {
         val title = if (target.selectedItemPosition == 0) "Saved TV / Device IPs" else "Saved BOX / Device IPs"
         val prefs = getSharedPreferences("wifi_remote", MODE_PRIVATE)
-        val ignored = prefs.getStringSet("ignored_ips", emptySet()) ?: emptySet()
         val ips = (prefs.getStringSet("known_ips", emptySet()) ?: emptySet()).toMutableSet()
         prefs.getString(if (target.selectedItemPosition == 0) "samsung_ip" else "rocktek_ip", null)?.let { ips.add(it) }
         ipInput.text.toString().trim().takeIf { it.isNotEmpty() }?.let { ips.add(it) }
-        val sorted = ips.filter { it.isNotBlank() && !ignored.contains(it) }.distinct().sorted()
+        val sorted = ips.filter { it.isNotBlank() }.distinct().sorted()
         if (sorted.isEmpty()) {
             status.text = "No saved devices. Enter an IP address or wait for device discovery."
             return
@@ -683,7 +680,7 @@ class WifiRemoteActivity : Activity() {
                     val history = (currentPrefs.getStringSet("known_ips", emptySet()) ?: emptySet()).toMutableSet()
                     history.remove(ip)
                     val hidden = (currentPrefs.getStringSet("ignored_ips", emptySet()) ?: emptySet()).toMutableSet()
-                    hidden.add(ip)
+                    hidden.remove(ip)
                     val editor = currentPrefs.edit()
                         .putStringSet("known_ips", history)
                         .putStringSet("ignored_ips", hidden)
