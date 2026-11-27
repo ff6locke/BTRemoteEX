@@ -610,7 +610,7 @@ class WifiRemoteActivity : Activity() {
             val prefs = getSharedPreferences("wifi_remote", MODE_PRIVATE)
             if (prefs.getBoolean("rocktek_paired_$ip", false)) {
                 val fingerprint = prefs.getString("rocktek_cert_$ip", null)
-                if (fingerprint.isNullOrBlank()) { status.text = "Pairing record missing. Pair the GX1 again."; return }
+                if (fingerprint.isNullOrBlank()) { status.text = "Pairing record missing. Pair the TV again."; return }
                 connectRocktekRemote(ip, fingerprint)
             } else {
                 beginRocktekPairing(ip)
@@ -681,13 +681,13 @@ class WifiRemoteActivity : Activity() {
                 confirmPairButton.visibility = View.VISIBLE
                 status.text = "Enter the code displayed on the BOX."
             } catch (e: Exception) {
-                status.text = "Pairing failed. Checking GX1 Wi-Fi services…"
+                status.text = "Pairing failed. Checking TV Wi-Fi services…"
                 val ports = withContext(Dispatchers.IO) { scanRemotePorts(ip) }
                 val open = ports.filterValues { it }.keys
                 status.text = if (open.isEmpty()) {
-                    "No remote ports detected (6467, 6466, 5555, 8008, 8009). USB debugging is not required for this test; GX1 may not expose a compatible remote service."
+                    "No remote ports detected (6467, 6466, 5555, 8008, 8009). USB debugging is not required for this test; The TV may not expose a compatible remote service."
                 } else {
-                    "GX1 responds on port(s): ${open.joinToString()}. We can use this result to select the correct Wi-Fi method."
+                    "TV responds on port(s): ${open.joinToString()}. We can use this result to select the correct Wi-Fi method."
                 }
                 rocktekInfo.text = "Pairing error: ${e.message ?: "unknown error"}"
             }
@@ -712,7 +712,7 @@ class WifiRemoteActivity : Activity() {
                 pairingCode.visibility = View.GONE
                 confirmPairButton.visibility = View.GONE
                 rocktekInfo.text = "BOX securely paired. Connecting remote…"
-                status.text = "Pairing successful. Connecting to GX1…"
+                status.text = "Pairing successful. Connecting to TV…"
                 connectRocktekRemote(ip, paired.serverCertFingerprint)
             } catch (e: Exception) {
                 status.text = "Pairing code failed: ${e.message ?: "try again"}"
@@ -784,7 +784,7 @@ class WifiRemoteActivity : Activity() {
                 runOnUiThread {
                     rocktekConnected = false
                     samsungControls.visibility = View.GONE
-                    status.text = "RockTek connection failed: ${e.message ?: "try pairing again"}"
+                    status.text = "TV connection failed: ${e.message ?: "try pairing again"}"
                 }
             }
         }
