@@ -62,6 +62,7 @@ class MainActivity : Activity() {
  }
  private var hid:BluetoothHidDevice?=null
  private var bleHid:BleHidServer?=null
+ private var useBleTransport=false
  private var connected:BluetoothDevice?=null
  private var registered=false
  private var profileRequested=false
@@ -307,13 +308,16 @@ class MainActivity : Activity() {
  override fun onPause(){super.onPause();sensorManager?.unregisterListener(gyroListener);lastGyroTime=0L}
  override fun onResume(){super.onResume();if(airMode&&gyro!=null)sensorManager?.registerListener(gyroListener,gyro,SensorManager.SENSOR_DELAY_GAME)}
  private fun startBleHid(){
+  useBleTransport=true
   if(Build.VERSION.SDK_INT>=31&&checkSelfPermission(Manifest.permission.BLUETOOTH_ADVERTISE)!=PackageManager.PERMISSION_GRANTED){requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_ADVERTISE,Manifest.permission.BLUETOOTH_CONNECT),23);status.text="Allow Bluetooth permissions, then tap Start BLE HID again";return}
-  if(bleHid?.isConnected==true){status.text="BLE HID is already connected";return}
+  if(useBleTransport&&bleHid?.isConnected==true){status.text="BLE HID is already connected";return}
   bleHid?.stop()
   bleHid=BleHidServer(this){message->runOnUiThread{status.text=message}}
   bleHid?.start()
  }
  private fun retryHid(){
+  useBleTransport=false
+  bleHid?.stop()
   if(!adapter.isEnabled){status.text="Turn on phone Bluetooth first";return}
   try{hid?.let{adapter.closeProfileProxy(BluetoothProfile.HID_DEVICE,it)}}catch(_:Exception){}
   hid=null
@@ -388,14 +392,14 @@ class MainActivity : Activity() {
  private fun key(mod:Int,k:Int){val report=byteArrayOf(mod.toByte(),0,k.toByte(),0,0,0,0,0);if(bleHid?.isConnected==true){bleHid?.sendKeyboard(report);handler.postDelayed({bleHid?.sendKeyboard(ByteArray(8))},120);return};val h=hid?:return;val d=connected?:return;if(!registered)return;try{val ok=h.sendReport(d,2,report);if(!ok)runOnUiThread{status.text="Classic HID connected, but Android rejected keyboard input"};handler.postDelayed({try{h.sendReport(d,2,ByteArray(8))}catch(_:Exception){}},120)}catch(e:Exception){runOnUiThread{status.text="Classic HID keyboard error: ${e.message ?: "unknown"}"}}}
  private fun consumer(usage:Int){val report=byteArrayOf((usage and 0xFF).toByte(),((usage shr 8) and 0xFF).toByte());if(bleHid?.isConnected==true){bleHid?.sendConsumer(report);handler.postDelayed({bleHid?.sendConsumer(byteArrayOf(0,0))},120);return};val h=hid?:return;val d=connected?:return;if(!registered)return;try{val ok=h.sendReport(d,3,report);if(!ok)runOnUiThread{status.text="Classic HID connected, but Android rejected system-key input"};handler.postDelayed({try{h.sendReport(d,3,byteArrayOf(0,0))}catch(_:Exception){}},120)}catch(e:Exception){runOnUiThread{status.text="Classic HID system-key error: ${e.message ?: "unknown"}"}}}
  private fun sendKeyboardChar(label:String){
-  if(bleHid?.isConnected!=true&&(!registered||connected==null)){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return}
+  if(!(useBleTransport&&bleHid?.isConnected==true)&&(!useBleTransport&&(!registered||connected==null))){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return}
   val c=label.firstOrNull()?:return
   val mapped=ascii(c)?:return
   val shifted=if(c.isLetter())(capsOn xor shiftOn) else (mapped.first!=0||shiftOn)
   val modifiers=(if(shifted)2 else 0) or (if(ctrlOn)1 else 0) or (if(altOn)4 else 0)
   key(modifiers,mapped.second)
  }
- private fun sendKeyboardUsage(usage:Int){if(bleHid?.isConnected!=true&&(!registered||connected==null)){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return};val modifiers=(if(shiftOn)2 else 0) or (if(ctrlOn)1 else 0) or (if(altOn)4 else 0);key(modifiers,usage)}
+ private fun sendKeyboardUsage(usage:Int){if(!(useBleTransport&&bleHid?.isConnected==true)&&(!useBleTransport&&(!registered||connected==null))){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return};val modifiers=(if(shiftOn)2 else 0) or (if(ctrlOn)1 else 0) or (if(altOn)4 else 0);key(modifiers,usage)}
  private fun sendText(s:String){if(bleHid?.isConnected!=true&&(!registered||connected==null)){Toast.makeText(this,"Connect Bluetooth HID to GX1 first",Toast.LENGTH_SHORT).show();return};var t=0L;s.forEach{c->val m=ascii(c);if(m!=null){handler.postDelayed({key(m.first,m.second)},t);t+=85}}}
  private fun ascii(c:Char):Pair<Int,Int>?{val shift=2;return when(c){
   in 'a'..'z'->Pair(0,4+(c-'a'));in 'A'..'Z'->Pair(shift,4+(c-'A'));in '1'..'9'->Pair(0,0x1E+(c-'1'));'0'->Pair(0,0x27);' '->Pair(0,0x2C);'\n','\r'->Pair(0,0x28);'\t'->Pair(0,0x2B)
