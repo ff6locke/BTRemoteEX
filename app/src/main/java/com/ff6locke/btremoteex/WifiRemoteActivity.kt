@@ -342,6 +342,51 @@ class WifiRemoteActivity : Activity() {
                 else -> true
             }
         }
+        // Portrait SNES-style gamepad mode.
+        val gamepadPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+            visibility = View.GONE
+        }
+        fun gameButton(label: String, key: String, color: Int, width: Int = 64, height: Int = 64): Button {
+            return Button(this).apply {
+                text = label; textSize = 18f; isAllCaps = false; setTextColor(Color.WHITE)
+                typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER
+                background = GradientDrawable().apply { cornerRadius = dp(32).toFloat(); setColor(color); setStroke(dp(2), Color.rgb(120, 160, 205)) }
+                setOnTouchListener { view, event ->
+                    when (event.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> { view.isPressed = true; sendSamsungKeyHold(key, true); true }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> { view.isPressed = false; sendSamsungKeyHold(key, false); true }
+                        else -> true
+                    }
+                }
+            }
+        }
+        val gamepadTop = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        val gpLeft = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+        val gpDpad = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+        gpDpad.addView(gameButton("▲", "KEY_UP", Color.rgb(40, 70, 105)), LinearLayout.LayoutParams(dp(62), dp(58)))
+        val gpLR = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        gpLR.addView(gameButton("◀", "KEY_LEFT", Color.rgb(40, 70, 105)), LinearLayout.LayoutParams(dp(58), dp(62)))
+        gpLR.addView(View(this), LinearLayout.LayoutParams(dp(42), dp(42)))
+        gpLR.addView(gameButton("▶", "KEY_RIGHT", Color.rgb(40, 70, 105)), LinearLayout.LayoutParams(dp(58), dp(62)))
+        gpDpad.addView(gpLR)
+        gpDpad.addView(gameButton("▼", "KEY_DOWN", Color.rgb(40, 70, 105)), LinearLayout.LayoutParams(dp(62), dp(58)))
+        gpLeft.addView(gpDpad)
+        gamepadTop.addView(gpLeft, LinearLayout.LayoutParams(0, -2, 1f))
+        val gpABXY = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+        val gpXY = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        gpXY.addView(gameButton("Y", "KEY_Y", Color.rgb(30, 95, 175)), LinearLayout.LayoutParams(dp(60), dp(60)).apply { rightMargin = dp(8) })
+        gpXY.addView(gameButton("X", "KEY_X", Color.rgb(30, 95, 175)), LinearLayout.LayoutParams(dp(60), dp(60)))
+        val gpBA = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        gpBA.addView(gameButton("B", "KEY_B", Color.rgb(30, 95, 175)), LinearLayout.LayoutParams(dp(60), dp(60)).apply { rightMargin = dp(8) })
+        gpBA.addView(gameButton("A", "KEY_A", Color.rgb(30, 95, 175)), LinearLayout.LayoutParams(dp(60), dp(60)))
+        gpABXY.addView(gpXY); gpABXY.addView(gpBA, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8) })
+        gamepadTop.addView(gpABXY, LinearLayout.LayoutParams(0, -2, 1f))
+        gamepadPanel.addView(gamepadTop, LinearLayout.LayoutParams(-1, -2))
+        val gpStartSelect = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        gpStartSelect.addView(gameButton("SELECT", "KEY_SELECT", Color.rgb(70, 75, 90), 84, 44), LinearLayout.LayoutParams(dp(92), dp(48)).apply { rightMargin = dp(24) })
+        gpStartSelect.addView(gameButton("START", "KEY_START", Color.rgb(70, 75, 90), 84, 44), LinearLayout.LayoutParams(dp(92), dp(48)))
+        gamepadPanel.addView(gpStartSelect, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
         val keyboardPanel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
         val keyboardInput = EditText(this).apply {
             hint = "Type text for the connected TV"; setSingleLine(false); minLines = 2
@@ -391,12 +436,13 @@ class WifiRemoteActivity : Activity() {
             touchPanel.visibility = if (mode == 1) View.VISIBLE else View.GONE
             airPanel.visibility = if (mode == 2) View.VISIBLE else View.GONE
             keyboardPanel.visibility = if (mode == 3) View.VISIBLE else View.GONE
+            gamepadPanel.visibility = if (mode == 4) View.VISIBLE else View.GONE
             if (mode == 2) {
                 if (gyro == null) { status.text = "This phone has no gyroscope; Air Mouse motion mode is unavailable."; return }
                 sensorManager.registerListener(gyroListener, gyro, SensorManager.SENSOR_DELAY_GAME)
             } else sensorManager.unregisterListener(gyroListener)
         }
-        listOf("D-PAD", "TOUCHPAD", "AIR MOUSE", "KEYBOARD").forEachIndexed { index, label ->
+        listOf("D-PAD", "TOUCHPAD", "AIR MOUSE", "KEYBOARD", "GAMEPAD").forEachIndexed { index, label ->
             modeRow.addView(Button(this).apply {
                 text = label; textSize = 10f; isAllCaps = false; setTextColor(Color.WHITE)
                 setOnClickListener { selectWifiMode(index) }
@@ -404,6 +450,7 @@ class WifiRemoteActivity : Activity() {
         }
         root.addView(modeRow, LinearLayout.LayoutParams(-1, dp(48)))
         root.addView(touchPanel, LinearLayout.LayoutParams(-1, dp(220)).apply { topMargin = dp(5) })
+        root.addView(gamepadPanel, LinearLayout.LayoutParams(-1, dp(300)).apply { topMargin = dp(5) })
         root.addView(airPanel, LinearLayout.LayoutParams(-1, dp(220)).apply { topMargin = dp(5) })
         root.addView(keyboardPanel, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
         touchPanel.visibility = View.GONE
