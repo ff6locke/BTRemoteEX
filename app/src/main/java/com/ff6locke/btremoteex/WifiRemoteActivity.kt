@@ -215,6 +215,12 @@ class WifiRemoteActivity : Activity() {
             setPadding(dp(4), dp(2), dp(4), dp(2))
         }, LinearLayout.LayoutParams(-1, dp(24)).apply { topMargin = dp(6) })
         root.addView(connectionRow, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(2) })
+        root.addView(Button(this).apply {
+            text = "SCAN AGAIN"
+            buttonStyle(this)
+            textSize = 13f
+            setOnClickListener { startIpDiscovery() }
+        }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
 
         samsungControls = LinearLayout(this).apply {
             orientation = if (landscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
