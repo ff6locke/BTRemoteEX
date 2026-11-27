@@ -538,15 +538,30 @@ class WifiRemoteActivity : Activity() {
     private suspend fun discoverLocalDevices(): List<String> = coroutineScope {
         val wifi = applicationContext.getSystemService(WIFI_SERVICE) as? WifiManager ?: return@coroutineScope emptyList()
         val dhcp = wifi.dhcpInfo ?: return@coroutineScope emptyList()
+        // WifiInfo/DhcpInfo store IPv4 addresses in little-endian integer order.
+        // Convert to network-order octets before calculating the subnet; otherwise
+        // the scan probes the wrong addresses (for example 193.168.1.0 instead
+        // of 192.168.1.x) and automatic discovery always appears empty.
+        fun toNetworkLong(address: Int): Long {
+            val a = address and 0xff
+            val b = (address ushr 8) and 0xff
+            val c = (address ushr 16) and 0xff
+            val d = (address ushr 24) and 0xff
+            return (a.toLong() shl 24) or (b.toLong() shl 16) or
+                (c.toLong() shl 8) or d.toLong()
+        }
         val localIp = dhcp.ipAddress
         if (localIp == 0) return@coroutineScope emptyList()
-        val mask: Int = if (dhcp.netmask != 0) dhcp.netmask.toInt() else -256
-        val base = localIp and mask
-        val hosts = (1..254).map { host ->
-            val ipInt = base or host
-            if (ipInt == localIp) null else "${ipInt and 0xff}.${(ipInt shr 8) and 0xff}.${(ipInt shr 16) and 0xff}.${(ipInt shr 24) and 0xff}"
+        val localAddress = toNetworkLong(localIp)
+        val maskAddress = if (dhcp.netmask != 0) toNetworkLong(dhcp.netmask) else 0xFFFFFF00L
+        val networkBase = localAddress and maskAddress
+        val hosts = (1L..254L).map { host ->
+            val address = networkBase or host
+            if (address == localAddress) null else
+                "${(address ushr 24) and 0xff}.${(address ushr 16) and 0xff}.${(address ushr 8) and 0xff}.${address and 0xff}"
         }.filterNotNull()
-        val ports = listOf(6466, 6467, 8001, 8002, 8008)
+        // Android TV, Samsung TV, and common remote-control service ports.
+        val ports = listOf(6466, 6467, 8001, 8002, 8008, 8009, 5555)
         hosts.map { host -> async {
             for (port in ports) {
                 try {
