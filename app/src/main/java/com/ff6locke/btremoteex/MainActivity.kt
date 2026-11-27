@@ -112,8 +112,39 @@ class MainActivity : Activity() {
   root.addView(Button(this).apply{text="Switch to Wi-Fi Mode";textSize=14f;isAllCaps=false;setOnClickListener{startActivity(Intent(this@MainActivity,WifiRemoteActivity::class.java))}},LinearLayout.LayoutParams(-1,dp(40)).apply{topMargin=dp(3)})
   modeList=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(0,dp(3),0,dp(3))}
   modeButtons=mutableListOf()
-  val modeNames=listOf("TV D-pad","Air Mouse","Mouse Touchpad","Keyboard")
-  for(rowIndex in 0..1){
+  val modeNames=listOf("TV D-pad","Air Mouse","Mouse Touchpad","Keyboard","Gamepad")
+  val gamepadPanel=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER;visibility=View.GONE}
+  fun gameHoldButton(label:String,usage:Int,shade:Int):Button=Button(this).apply{
+   text=label;textSize=18f;isAllCaps=false;setTextColor(android.graphics.Color.WHITE);minHeight=dp(58);typeface=android.graphics.Typeface.DEFAULT_BOLD
+   background=android.graphics.drawable.GradientDrawable().apply{cornerRadius=dp(30).toFloat();setColor(shade);setStroke(dp(2),android.graphics.Color.rgb(120,160,205))}
+   setOnTouchListener{v,e->when(e.actionMasked){MotionEvent.ACTION_DOWN->{v.isPressed=true;heldKey(usage,true);true};MotionEvent.ACTION_UP,MotionEvent.ACTION_CANCEL->{v.isPressed=false;heldKey(usage,false);true};else->true}}
+  }
+  val gameTop=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
+  val gameDpad=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER}
+  gameDpad.addView(gameHoldButton("▲",0x52,android.graphics.Color.rgb(40,70,105)),LinearLayout.LayoutParams(dp(60),dp(58)))
+  val gameLR=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
+  gameLR.addView(gameHoldButton("◀",0x50,android.graphics.Color.rgb(40,70,105)),LinearLayout.LayoutParams(dp(58),dp(60)))
+  gameLR.addView(View(this),LinearLayout.LayoutParams(dp(36),dp(36)))
+  gameLR.addView(gameHoldButton("▶",0x4F,android.graphics.Color.rgb(40,70,105)),LinearLayout.LayoutParams(dp(58),dp(60)))
+  gameDpad.addView(gameLR)
+  gameDpad.addView(gameHoldButton("▼",0x51,android.graphics.Color.rgb(40,70,105)),LinearLayout.LayoutParams(dp(60),dp(58)))
+  gameTop.addView(gameDpad,LinearLayout.LayoutParams(0,-2,1f))
+  val faceButtons=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER}
+  val xy=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
+  xy.addView(gameHoldButton("Y",0x1C,android.graphics.Color.rgb(35,110,70)),LinearLayout.LayoutParams(dp(60),dp(60)).apply{rightMargin=dp(8)})
+  xy.addView(gameHoldButton("X",0x1B,android.graphics.Color.rgb(35,110,70)),LinearLayout.LayoutParams(dp(60),dp(60)))
+  val ba=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
+  ba.addView(gameHoldButton("B",0x1D,android.graphics.Color.rgb(35,110,70)),LinearLayout.LayoutParams(dp(60),dp(60)).apply{rightMargin=dp(8)})
+  ba.addView(gameHoldButton("A",0x1A,android.graphics.Color.rgb(35,110,70)),LinearLayout.LayoutParams(dp(60),dp(60)))
+  faceButtons.addView(xy);faceButtons.addView(ba,LinearLayout.LayoutParams(-2,-2).apply{topMargin=dp(8)})
+  gameTop.addView(faceButtons,LinearLayout.LayoutParams(0,-2,1f))
+  gamepadPanel.addView(gameTop)
+  val ss=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
+  ss.addView(gameHoldButton("SELECT",0x2D,android.graphics.Color.rgb(70,75,90)),LinearLayout.LayoutParams(dp(92),dp(46)).apply{rightMargin=dp(20)})
+  ss.addView(gameHoldButton("START",0x28,android.graphics.Color.rgb(70,75,90)),LinearLayout.LayoutParams(dp(92),dp(46)))
+  gamepadPanel.addView(ss,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(16)})
+  contentHost.addView(gamepadPanel,FrameLayout.LayoutParams(-1,-1))
+    for(rowIndex in 0..1){
    val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER}
    for(colIndex in 0..1){
     val index=rowIndex*2+colIndex
@@ -246,12 +277,13 @@ class MainActivity : Activity() {
   setMode(0)
  }
  private fun setMode(mode:Int){
-  controlMode=mode.coerceIn(0,3)
+  controlMode=mode.coerceIn(0,4)
   airMode=(controlMode==1)
   tvPanel.visibility=if(controlMode==0)View.VISIBLE else View.GONE
   airPanel.visibility=if(controlMode==1)View.VISIBLE else View.GONE
   touchPanel.visibility=if(controlMode==2)View.VISIBLE else View.GONE
   keyboardPanel.visibility=if(controlMode==3)View.VISIBLE else View.GONE
+  gamepadPanel.visibility=if(controlMode==4)View.VISIBLE else View.GONE
   if(controlMode==3){keyboardPanel.visibility=View.VISIBLE;keyboardPanel.requestLayout();contentHost.requestLayout()}
   modeButtons.forEachIndexed{index,b->b.alpha=if(index==controlMode)1f else 0.62f;b.isSelected=index==controlMode}
   lastGyroTime=0L
@@ -333,6 +365,13 @@ class MainActivity : Activity() {
  }
  override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){super.onActivityResult(requestCode,resultCode,data);if(requestCode==discoverableRequestCode){discoverabilityActive=resultCode>0;runOnUiThread{status.text=if(discoverabilityActive)"Visible to Bluetooth devices for $resultCode seconds — registering HID…" else "Bluetooth visibility was declined or unavailable — HID registration will continue"}}}
  override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==23&&grantResults.isNotEmpty()&&grantResults.all{it==PackageManager.PERMISSION_GRANTED})startHid()else if(requestCode==23)status.text="Bluetooth permissions are needed for HID"}
+ private fun heldKey(usage:Int,pressed:Boolean){
+  val report=ByteArray(8)
+  if(pressed)report[2]=usage.toByte()
+  if(bleHid?.isConnected==true){bleHid?.sendKeyboard(report);return}
+  val h=hid?:return;val d=connected?:return;if(!registered)return
+  try{h.sendReport(d,2,report)}catch(_:Exception){}
+ }
  private fun mouse(b:Int,x:Int,y:Int,w:Int){val report=byteArrayOf(b.toByte(),x.coerceIn(-127,127).toByte(),y.coerceIn(-127,127).toByte(),w.toByte());if(bleHid?.isConnected==true){bleHid?.sendMouse(report);return};val h=hid?:return;val d=connected?:return;if(!registered)return;try{h.sendReport(d,1,report)}catch(_:Exception){}}
  private fun click(b:Int){mouse(b,0,0,0);handler.postDelayed({mouse(0,0,0,0)},50)}
  private fun key(mod:Int,k:Int){val report=byteArrayOf(mod.toByte(),0,k.toByte(),0,0,0,0,0);if(bleHid?.isConnected==true){bleHid?.sendKeyboard(report);handler.postDelayed({bleHid?.sendKeyboard(ByteArray(8))},120);return};val h=hid?:return;val d=connected?:return;if(!registered)return;try{h.sendReport(d,2,report);handler.postDelayed({try{h.sendReport(d,2,ByteArray(8))}catch(_:Exception){}},120)}catch(_:Exception){}}
