@@ -509,9 +509,12 @@ class WifiRemoteActivity : Activity() {
         if (ip.isBlank()) return
         val prefs = getSharedPreferences("wifi_remote", MODE_PRIVATE)
         val history = (prefs.getStringSet("known_ips", emptySet()) ?: emptySet()).toMutableSet()
+        val ignored = (prefs.getStringSet("ignored_ips", emptySet()) ?: emptySet()).toMutableSet()
         history.add(ip)
+        ignored.remove(ip)
         prefs.edit()
             .putStringSet("known_ips", history)
+            .putStringSet("ignored_ips", ignored)
             .putString(if (target.selectedItemPosition == 0) "samsung_ip" else "rocktek_ip", ip)
             .apply()
     }
@@ -524,10 +527,12 @@ class WifiRemoteActivity : Activity() {
             if (found.isNotEmpty()) {
                 val prefs = getSharedPreferences("wifi_remote", MODE_PRIVATE)
                 val history = (prefs.getStringSet("known_ips", emptySet()) ?: emptySet()).toMutableSet()
-                history.addAll(found)
+                val ignored = prefs.getStringSet("ignored_ips", emptySet()) ?: emptySet()
+                val visibleFound = found.filterNot { ignored.contains(it) }
+                history.addAll(visibleFound)
                 prefs.edit().putStringSet("known_ips", history).apply()
-                ipInput.setText(found.first())
-                status.text = "Detected IP address(es): ${found.joinToString()}. Tap ▼ to choose."
+                ipInput.setText(visibleFound.firstOrNull().orEmpty())
+                status.text = if (visibleFound.isNotEmpty()) "Detected device IP address(es): ${visibleFound.joinToString()}. Tap ▼ to choose." else "No new devices detected. Tap ▼ to choose a saved device or enter an IP manually."
             } else {
                 ipInput.setText("")
                 status.text = "No TV/BOX IP detected. IP field cleared; enter it manually if needed."
@@ -573,31 +578,94 @@ class WifiRemoteActivity : Activity() {
     }
 
     private fun showIpList() {
-        val title = if (target.selectedItemPosition == 0) "Select TV IP" else "Select BOX IP"
+        val title = if (target.selectedItemPosition == 0) "Saved TV / Device IPs" else "Saved BOX / Device IPs"
         val prefs = getSharedPreferences("wifi_remote", MODE_PRIVATE)
+        val ignored = prefs.getStringSet("ignored_ips", emptySet()) ?: emptySet()
         val ips = (prefs.getStringSet("known_ips", emptySet()) ?: emptySet()).toMutableSet()
-        prefs.all.keys.forEach { key ->
-            when {
-                key == "samsung_ip" || key == "rocktek_ip" -> prefs.getString(key, null)?.let { ips.add(it) }
-                key.startsWith("samsung_token_") -> ips.add(key.removePrefix("samsung_token_"))
-                key.startsWith("rocktek_cert_") -> ips.add(key.removePrefix("rocktek_cert_"))
-            }
-        }
-        if (ipInput.text.toString().trim().isNotEmpty()) ips.add(ipInput.text.toString().trim())
-        if (ips.isEmpty()) {
-            status.text = "No IP detected or saved. Enter the IP manually."
+        prefs.getString(if (target.selectedItemPosition == 0) "samsung_ip" else "rocktek_ip", null)?.let { ips.add(it) }
+        ipInput.text.toString().trim().takeIf { it.isNotEmpty() }?.let { ips.add(it) }
+        val sorted = ips.filter { it.isNotBlank() && !ignored.contains(it) }.distinct().sorted()
+        if (sorted.isEmpty()) {
+            status.text = "No saved devices. Enter an IP address or wait for device discovery."
             return
         }
-        val sorted = ips.filter { it.isNotBlank() }.sorted()
-        android.app.AlertDialog.Builder(this)
+
+        val density = resources.displayMetrics.density
+        fun dp(value: Int) = (value * density).toInt()
+        val list = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(4), dp(12), dp(4))
+        }
+        val scroll = ScrollView(this).apply {
+            addView(list, android.view.ViewGroup.LayoutParams(-1, -2))
+        }
+        val dialog = android.app.AlertDialog.Builder(this)
             .setTitle(title)
-            .setItems(sorted.toTypedArray()) { _, which ->
-                ipInput.setText(sorted[which])
-                ipInput.setSelection(ipInput.text.length)
-                rememberIp(sorted[which])
+            .setView(scroll)
+            .setNegativeButton("CLOSE", null)
+            .create()
+
+        sorted.forEach { ip ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(5), 0, dp(5))
             }
-            .setNegativeButton("CANCEL", null)
-            .show()
+            val details = TextView(this).apply {
+                text = "Looking up device name…\\n$ip"
+                textSize = 14f
+                setTextColor(Color.WHITE)
+                setPadding(dp(8), dp(5), dp(5), dp(5))
+                setOnClickListener {
+                    ipInput.setText(ip)
+                    ipInput.setSelection(ipInput.text.length)
+                    rememberIp(ip)
+                    dialog.dismiss()
+                }
+            }
+            row.addView(details, LinearLayout.LayoutParams(0, dp(58), 1f))
+            val delete = Button(this).apply {
+                text = "DELETE"
+                textSize = 11f
+                isAllCaps = false
+                buttonStyle(this)
+                setOnClickListener {
+                    val currentPrefs = getSharedPreferences("wifi_remote", MODE_PRIVATE)
+                    val history = (currentPrefs.getStringSet("known_ips", emptySet()) ?: emptySet()).toMutableSet()
+                    history.remove(ip)
+                    val hidden = (currentPrefs.getStringSet("ignored_ips", emptySet()) ?: emptySet()).toMutableSet()
+                    hidden.add(ip)
+                    val editor = currentPrefs.edit()
+                        .putStringSet("known_ips", history)
+                        .putStringSet("ignored_ips", hidden)
+                    if (currentPrefs.getString("samsung_ip", null) == ip) editor.remove("samsung_ip")
+                    if (currentPrefs.getString("rocktek_ip", null) == ip) editor.remove("rocktek_ip")
+                    editor.apply()
+                    if (ipInput.text.toString().trim() == ip) ipInput.setText("")
+                    list.removeView(row)
+                    status.text = "Removed $ip from the device list."
+                    if (list.childCount == 0) dialog.dismiss()
+                }
+            }
+            row.addView(delete, LinearLayout.LayoutParams(dp(82), dp(42)))
+            list.addView(row, LinearLayout.LayoutParams(-1, -2))
+            list.addView(View(this).apply { setBackgroundColor(Color.rgb(55, 70, 90)) },
+                LinearLayout.LayoutParams(-1, dp(1)))
+
+            activityScope.launch {
+                val name = withContext(Dispatchers.IO) {
+                    try {
+                        val host = java.net.InetAddress.getByName(ip).canonicalHostName
+                        if (host.isNullOrBlank() || host == ip || host.matches(Regex("""\\d+\\.\\d+\\.\\d+\\.\\d+"""))) null
+                        else host.removeSuffix(".").substringBefore(".")
+                    } catch (_: Exception) { null }
+                }
+                if (details.parent != null) {
+                    details.text = "${name ?: "Device name unavailable"}\\n$ip"
+                }
+            }
+        }
+        dialog.show()
     }
 
     private fun showTarget(position: Int) {
