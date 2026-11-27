@@ -610,7 +610,8 @@ class WifiRemoteActivity : Activity() {
             .setNegativeButton("CLOSE", null)
             .create()
 
-        val bluetoothButton = Button(this).apply {
+        lateinit var bluetoothButton: Button
+        bluetoothButton = Button(this).apply {
             text = "SHOW PAIRED BLUETOOTH DEVICES"
             textSize = 12f
             isAllCaps = false
