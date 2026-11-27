@@ -40,6 +40,7 @@ class MainActivity : Activity() {
  private lateinit var airPanel:LinearLayout
  private lateinit var tvPanel:LinearLayout
  private lateinit var touchPanel:LinearLayout
+ private lateinit var gamepadPanel:LinearLayout
  private var airMode=false
  private var controlMode=0
  private var sensorManager:SensorManager?=null
@@ -113,7 +114,7 @@ class MainActivity : Activity() {
   modeList=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(0,dp(3),0,dp(3))}
   modeButtons=mutableListOf()
   val modeNames=listOf("TV D-pad","Air Mouse","Mouse Touchpad","Keyboard","Gamepad")
-  val gamepadPanel=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER;visibility=View.GONE}
+  gamepadPanel=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER;visibility=View.GONE}
   fun gameHoldButton(label:String,usage:Int,shade:Int):Button=Button(this).apply{
    text=label;textSize=18f;isAllCaps=false;setTextColor(android.graphics.Color.WHITE);minHeight=dp(58);typeface=android.graphics.Typeface.DEFAULT_BOLD
    background=android.graphics.drawable.GradientDrawable().apply{cornerRadius=dp(30).toFloat();setColor(shade);setStroke(dp(2),android.graphics.Color.rgb(120,160,205))}
@@ -143,7 +144,6 @@ class MainActivity : Activity() {
   ss.addView(gameHoldButton("SELECT",0x2D,android.graphics.Color.rgb(70,75,90)),LinearLayout.LayoutParams(dp(92),dp(46)).apply{rightMargin=dp(20)})
   ss.addView(gameHoldButton("START",0x28,android.graphics.Color.rgb(70,75,90)),LinearLayout.LayoutParams(dp(92),dp(46)))
   gamepadPanel.addView(ss,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(16)})
-  contentHost.addView(gamepadPanel,FrameLayout.LayoutParams(-1,-1))
     for(rowIndex in 0..1){
    val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER}
    for(colIndex in 0..1){
@@ -156,6 +156,7 @@ class MainActivity : Activity() {
   }
   root.addView(modeList,LinearLayout.LayoutParams(-1,dp(86)).apply{topMargin=dp(2);bottomMargin=dp(2)})
   contentHost=FrameLayout(this)
+  contentHost.addView(gamepadPanel,FrameLayout.LayoutParams(-1,-1))
   airPanel=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER}
   airPanel.addView(TextView(this).apply{text="AIR MOUSE MODE";textSize=20f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(0,dp(12),0,dp(12))})
   airPanel.addView(TextView(this).apply{text="Move your phone gently to move the pointer. Keep the phone level, then use the click buttons.";textSize=15f;setTextColor(android.graphics.Color.WHITE);gravity=android.view.Gravity.CENTER;setPadding(dp(10),dp(8),dp(10),dp(16))})
