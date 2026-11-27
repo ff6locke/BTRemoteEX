@@ -144,7 +144,7 @@ class MainActivity : Activity() {
   gameTop.addView(faceButtons,LinearLayout.LayoutParams(0,-2,1f))
   val gameShoulders=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
   gameShoulders.addView(gameHoldButton("L",0x0F,android.graphics.Color.rgb(112,105,135)),LinearLayout.LayoutParams(dp(94),dp(44)).apply{rightMargin=dp(36)})
-  gameShoulders.addView(gameHoldButton("R",0x10,android.graphics.Color.rgb(112,105,135)),LinearLayout.LayoutParams(dp(94),dp(44)))
+  gameShoulders.addView(gameHoldButton("R",0x15,android.graphics.Color.rgb(112,105,135)),LinearLayout.LayoutParams(dp(94),dp(44)))
   gamepadPanel.addView(gameShoulders,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(12)})
   gamepadPanel.addView(gameTop)
   val ss=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
