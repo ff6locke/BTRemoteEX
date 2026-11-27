@@ -1,6 +1,10 @@
 package com.ff6locke.btremoteex
 
 import android.app.Activity
+import android.Manifest
+import android.bluetooth.BluetoothAdapter
+import android.content.pm.PackageManager
+import android.os.Build
 import android.content.Intent
 import android.os.Bundle
 import android.net.wifi.WifiManager
@@ -605,6 +609,48 @@ class WifiRemoteActivity : Activity() {
             .setView(scroll)
             .setNegativeButton("CLOSE", null)
             .create()
+
+        val bluetoothButton = Button(this).apply {
+            text = "SHOW PAIRED BLUETOOTH DEVICES"
+            textSize = 12f
+            isAllCaps = false
+            buttonStyle(this)
+            setOnClickListener {
+                if (Build.VERSION.SDK_INT >= 31 &&
+                    checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT), 41)
+                    status.text = "Allow Nearby devices permission, then open the device list again."
+                    dialog.dismiss()
+                    return@setOnClickListener
+                }
+                val adapter = BluetoothAdapter.getDefaultAdapter()
+                val paired = try { adapter?.bondedDevices?.toList().orEmpty() } catch (_: SecurityException) { emptyList() }
+                val heading = TextView(this@WifiRemoteActivity).apply {
+                    text = if (paired.isEmpty()) "No paired Bluetooth devices found." else "PAIRED BLUETOOTH DEVICES (${paired.size})"
+                    textSize = 13f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setTextColor(Color.BLACK)
+                    setPadding(dp(8), dp(12), dp(8), dp(6))
+                }
+                list.addView(heading, 0)
+                paired.sortedBy { try { it.name ?: it.address } catch (_: SecurityException) { "" } }.forEach { device ->
+                    val label = try { device.name?.takeIf { it.isNotBlank() } ?: "Unnamed Bluetooth device" } catch (_: SecurityException) { "Bluetooth device" }
+                    val address = try { device.address } catch (_: SecurityException) { "Address unavailable" }
+                    val rowText = TextView(this@WifiRemoteActivity).apply {
+                        text = "$label  •  $address"
+                        textSize = 13f
+                        setTextColor(Color.rgb(20, 55, 95))
+                        setPadding(dp(8), dp(7), dp(8), dp(7))
+                    }
+                    list.addView(rowText, 0)
+                }
+                bluetoothButton.isEnabled = false
+                bluetoothButton.text = "BLUETOOTH DEVICES SHOWN"
+            }
+        }
+        list.addView(bluetoothButton, LinearLayout.LayoutParams(-1, dp(44)))
+        list.addView(View(this).apply { setBackgroundColor(Color.rgb(55, 70, 90)) },
+            LinearLayout.LayoutParams(-1, dp(1)))
 
         sorted.forEach { ip ->
             val row = LinearLayout(this).apply {
