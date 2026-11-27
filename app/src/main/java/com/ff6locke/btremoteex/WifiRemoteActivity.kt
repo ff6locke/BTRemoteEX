@@ -375,13 +375,17 @@ class WifiRemoteActivity : Activity() {
         gamepadTop.addView(gpLeft, LinearLayout.LayoutParams(0, -2, 1f))
         val gpABXY = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
         val gpXY = LinearLayout(this).apply { gravity = Gravity.CENTER }
-        gpXY.addView(gameButton("Y", "KEY_Y", Color.rgb(30, 95, 175)), LinearLayout.LayoutParams(dp(60), dp(60)).apply { rightMargin = dp(8) })
-        gpXY.addView(gameButton("X", "KEY_X", Color.rgb(30, 95, 175)), LinearLayout.LayoutParams(dp(60), dp(60)))
+        gpXY.addView(gameButton("Y", "KEY_Y", Color.rgb(255, 211, 48)), LinearLayout.LayoutParams(dp(60), dp(60)).apply { rightMargin = dp(8) })
+        gpXY.addView(gameButton("X", "KEY_X", Color.rgb(45, 112, 220)), LinearLayout.LayoutParams(dp(60), dp(60)))
         val gpBA = LinearLayout(this).apply { gravity = Gravity.CENTER }
-        gpBA.addView(gameButton("B", "KEY_B", Color.rgb(30, 95, 175)), LinearLayout.LayoutParams(dp(60), dp(60)).apply { rightMargin = dp(8) })
-        gpBA.addView(gameButton("A", "KEY_A", Color.rgb(30, 95, 175)), LinearLayout.LayoutParams(dp(60), dp(60)))
+        gpBA.addView(gameButton("B", "KEY_B", Color.rgb(220, 49, 62)), LinearLayout.LayoutParams(dp(60), dp(60)).apply { rightMargin = dp(8) })
+        gpBA.addView(gameButton("A", "KEY_A", Color.rgb(45, 160, 91)), LinearLayout.LayoutParams(dp(60), dp(60)))
         gpABXY.addView(gpXY); gpABXY.addView(gpBA, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8) })
         gamepadTop.addView(gpABXY, LinearLayout.LayoutParams(0, -2, 1f))
+        val gpShoulders = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        gpShoulders.addView(gameButton("L", "KEY_L1", Color.rgb(112, 105, 135), 78, 42), LinearLayout.LayoutParams(dp(94), dp(44)).apply { rightMargin = dp(36) })
+        gpShoulders.addView(gameButton("R", "KEY_R1", Color.rgb(112, 105, 135), 78, 42), LinearLayout.LayoutParams(dp(94), dp(44)))
+        gamepadPanel.addView(gpShoulders, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
         gamepadPanel.addView(gamepadTop, LinearLayout.LayoutParams(-1, -2))
         val gpStartSelect = LinearLayout(this).apply { gravity = Gravity.CENTER }
         gpStartSelect.addView(gameButton("SELECT", "KEY_SELECT", Color.rgb(70, 75, 90), 84, 44), LinearLayout.LayoutParams(dp(92), dp(48)).apply { rightMargin = dp(24) })
@@ -795,6 +799,8 @@ class WifiRemoteActivity : Activity() {
                 "KEY_RIGHT" -> 22
                 "KEY_VOLUP" -> 24
                 "KEY_VOLDOWN" -> 25
+                "KEY_L1" -> 102
+                "KEY_R1" -> 103
                 else -> return
             }
             val session = remoteSession
