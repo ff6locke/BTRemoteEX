@@ -114,47 +114,57 @@ class MainActivity : Activity() {
   modeList=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(0,dp(3),0,dp(3))}
   modeButtons=mutableListOf()
   val modeNames=listOf("TV D-pad","Air Mouse","Mouse Touchpad","Keyboard","Gamepad")
-  gamepadPanel=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER;visibility=View.GONE}
+  gamepadPanel=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER;visibility=View.GONE;setPadding(dp(12),dp(18),dp(12),dp(18));background=android.graphics.drawable.GradientDrawable().apply{cornerRadius=dp(26).toFloat();setColor(android.graphics.Color.rgb(204,199,222));setStroke(dp(2),android.graphics.Color.rgb(126,119,151))}}
+  val snesInk=android.graphics.Color.rgb(35,35,48)
   fun gameHoldButton(label:String,usage:Int,shade:Int):Button=Button(this).apply{
-   text=label;textSize=18f;isAllCaps=false;setTextColor(android.graphics.Color.WHITE);minHeight=dp(58);typeface=android.graphics.Typeface.DEFAULT_BOLD
-   background=android.graphics.drawable.GradientDrawable().apply{cornerRadius=dp(30).toFloat();setColor(shade);setStroke(dp(2),android.graphics.Color.rgb(120,160,205))}
+   text=label;textSize=18f;isAllCaps=false;setTextColor(if(label=="Y")snesInk else android.graphics.Color.WHITE);minHeight=dp(58);typeface=android.graphics.Typeface.DEFAULT_BOLD
+   elevation=dp(5).toFloat();stateListAnimator=null;setPadding(0,0,0,0)
+   background=android.graphics.drawable.GradientDrawable().apply{shape=android.graphics.drawable.GradientDrawable.OVAL;setColor(shade);setStroke(dp(2),android.graphics.Color.rgb(245,238,255))}
    setOnTouchListener{v,e->when(e.actionMasked){MotionEvent.ACTION_DOWN->{v.isPressed=true;heldKey(usage,true);true};MotionEvent.ACTION_UP,MotionEvent.ACTION_CANCEL->{v.isPressed=false;heldKey(usage,false);true};else->true}}
   }
   val gameTop=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
   val gameDpad=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER}
-  gameDpad.addView(gameHoldButton("▲",0x52,android.graphics.Color.rgb(40,70,105)),LinearLayout.LayoutParams(dp(60),dp(58)))
+  gameDpad.addView(gameHoldButton("▲",0x52,android.graphics.Color.rgb(48,48,58)),LinearLayout.LayoutParams(dp(60),dp(58)))
   val gameLR=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
-  gameLR.addView(gameHoldButton("◀",0x50,android.graphics.Color.rgb(40,70,105)),LinearLayout.LayoutParams(dp(58),dp(60)))
+  gameLR.addView(gameHoldButton("◀",0x50,android.graphics.Color.rgb(48,48,58)),LinearLayout.LayoutParams(dp(58),dp(60)))
   gameLR.addView(View(this),LinearLayout.LayoutParams(dp(36),dp(36)))
-  gameLR.addView(gameHoldButton("▶",0x4F,android.graphics.Color.rgb(40,70,105)),LinearLayout.LayoutParams(dp(58),dp(60)))
+  gameLR.addView(gameHoldButton("▶",0x4F,android.graphics.Color.rgb(48,48,58)),LinearLayout.LayoutParams(dp(58),dp(60)))
   gameDpad.addView(gameLR)
-  gameDpad.addView(gameHoldButton("▼",0x51,android.graphics.Color.rgb(40,70,105)),LinearLayout.LayoutParams(dp(60),dp(58)))
+  gameDpad.addView(gameHoldButton("▼",0x51,android.graphics.Color.rgb(48,48,58)),LinearLayout.LayoutParams(dp(60),dp(58)))
   gameTop.addView(gameDpad,LinearLayout.LayoutParams(0,-2,1f))
   val faceButtons=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER}
   val xy=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
-  xy.addView(gameHoldButton("Y",0x1C,android.graphics.Color.rgb(35,110,70)),LinearLayout.LayoutParams(dp(60),dp(60)).apply{rightMargin=dp(8)})
-  xy.addView(gameHoldButton("X",0x1B,android.graphics.Color.rgb(35,110,70)),LinearLayout.LayoutParams(dp(60),dp(60)))
+  xy.addView(gameHoldButton("Y",0x1C,android.graphics.Color.rgb(255,211,48)),LinearLayout.LayoutParams(dp(60),dp(60)).apply{rightMargin=dp(8)})
+  xy.addView(gameHoldButton("X",0x1B,android.graphics.Color.rgb(45,112,220)),LinearLayout.LayoutParams(dp(60),dp(60)))
   val ba=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
-  ba.addView(gameHoldButton("B",0x1D,android.graphics.Color.rgb(35,110,70)),LinearLayout.LayoutParams(dp(60),dp(60)).apply{rightMargin=dp(8)})
-  ba.addView(gameHoldButton("A",0x1A,android.graphics.Color.rgb(35,110,70)),LinearLayout.LayoutParams(dp(60),dp(60)))
+  ba.addView(gameHoldButton("B",0x1D,android.graphics.Color.rgb(220,49,62)),LinearLayout.LayoutParams(dp(60),dp(60)).apply{rightMargin=dp(8)})
+  ba.addView(gameHoldButton("A",0x1A,android.graphics.Color.rgb(45,160,91)),LinearLayout.LayoutParams(dp(60),dp(60)))
   faceButtons.addView(xy);faceButtons.addView(ba,LinearLayout.LayoutParams(-2,-2).apply{topMargin=dp(8)})
   gameTop.addView(faceButtons,LinearLayout.LayoutParams(0,-2,1f))
   gamepadPanel.addView(gameTop)
   val ss=LinearLayout(this).apply{gravity=android.view.Gravity.CENTER}
   ss.addView(gameHoldButton("SELECT",0x2D,android.graphics.Color.rgb(70,75,90)),LinearLayout.LayoutParams(dp(92),dp(46)).apply{rightMargin=dp(20)})
   ss.addView(gameHoldButton("START",0x28,android.graphics.Color.rgb(70,75,90)),LinearLayout.LayoutParams(dp(92),dp(46)))
-  gamepadPanel.addView(ss,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(16)})
-    for(rowIndex in 0..1){
+  gamepadPanel.addView(ss,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(20)})
+  ss.background=android.graphics.drawable.GradientDrawable().apply{cornerRadius=dp(24).toFloat();setColor(android.graphics.Color.rgb(177,170,198))}
+  ss.setPadding(dp(12),dp(8),dp(12),dp(8))
+  for(rowIndex in 0..2){
    val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER}
-   for(colIndex in 0..1){
-    val index=rowIndex*2+colIndex
-    val b=Button(this).apply{text=modeNames[index];textSize=13f;isAllCaps=false;minHeight=dp(38);setOnClickListener{setMode(index)}}
+   if(rowIndex<2){
+    for(colIndex in 0..1){
+     val index=rowIndex*2+colIndex
+     val b=Button(this).apply{text=modeNames[index];textSize=13f;isAllCaps=false;minHeight=dp(38);setOnClickListener{setMode(index)}}
+     modeButtons.add(b)
+     row.addView(b,LinearLayout.LayoutParams(0,dp(40),1f).apply{if(colIndex==0)rightMargin=dp(3) else leftMargin=dp(3)})
+    }
+   }else{
+    val b=Button(this).apply{text=modeNames[4];textSize=13f;isAllCaps=false;minHeight=dp(38);setOnClickListener{setMode(4)}}
     modeButtons.add(b)
-    row.addView(b,LinearLayout.LayoutParams(0,dp(40),1f).apply{if(colIndex==0)rightMargin=dp(3) else leftMargin=dp(3)})
+    row.addView(b,LinearLayout.LayoutParams(-1,dp(40)))
    }
-   modeList.addView(row,LinearLayout.LayoutParams(-1,dp(42)).apply{if(rowIndex==1)topMargin=dp(2)})
+   modeList.addView(row,LinearLayout.LayoutParams(-1,dp(42)).apply{if(rowIndex>0)topMargin=dp(2)})
   }
-  root.addView(modeList,LinearLayout.LayoutParams(-1,dp(86)).apply{topMargin=dp(2);bottomMargin=dp(2)})
+  root.addView(modeList,LinearLayout.LayoutParams(-1,dp(132)).apply{topMargin=dp(2);bottomMargin=dp(2)})
   contentHost=FrameLayout(this)
   contentHost.addView(gamepadPanel,FrameLayout.LayoutParams(-1,-1))
   airPanel=LinearLayout(this).apply{orientation=1;gravity=android.view.Gravity.CENTER}
