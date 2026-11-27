@@ -169,7 +169,7 @@ class BleHidServer(
             isConnected = statusCode == BluetoothGatt.GATT_SUCCESS && newState == BluetoothProfile.STATE_CONNECTED
             if (isConnected) {
                 connectedDevice = device
-                status("BLE HID connected to ${device.name ?: "host"}")
+                status("BLE HID connected — waiting for receiver input subscription")
             } else {
                 notifyEnabled.remove(device.address)
                 connectedDevice = null
@@ -182,8 +182,13 @@ class BleHidServer(
         }
         override fun onDescriptorWriteRequest(device: BluetoothDevice, requestId: Int, descriptor: BluetoothGattDescriptor, preparedWrite: Boolean, responseNeeded: Boolean, offset: Int, value: ByteArray) {
             if (descriptor.uuid == CCCD) {
-                if (value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)) notifyEnabled.add(device.address)
-                else notifyEnabled.remove(device.address)
+                if (value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)) {
+                    notifyEnabled.add(device.address)
+                    status("BLE HID ready — receiver enabled input reports")
+                } else {
+                    notifyEnabled.remove(device.address)
+                    status("BLE HID connected, but receiver disabled input reports")
+                }
             }
             if (responseNeeded) server?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, value)
         }
@@ -205,7 +210,11 @@ class BleHidServer(
     private fun notify(characteristic: BluetoothGattCharacteristic?, value: ByteArray) {
         val s = server ?: return
         val c = characteristic ?: return
-        if (!isConnected || notifyEnabled.isEmpty()) return
+        if (!isConnected) return
+        if (notifyEnabled.isEmpty()) {
+            status("BLE connected, but receiver has not enabled HID input reports")
+            return
+        }
         c.value = value
         val device = connectedDevice?.takeIf { it.address in notifyEnabled } ?: return
         try {
