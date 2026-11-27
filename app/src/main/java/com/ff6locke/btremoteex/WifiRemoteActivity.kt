@@ -595,6 +595,7 @@ class WifiRemoteActivity : Activity() {
         val list = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(4), dp(12), dp(4))
+            setBackgroundColor(Color.WHITE)
         }
         val scroll = ScrollView(this).apply {
             addView(list, android.view.ViewGroup.LayoutParams(-1, -2))
@@ -614,7 +615,8 @@ class WifiRemoteActivity : Activity() {
             val details = TextView(this).apply {
                 text = "Looking up device name…\\n$ip"
                 textSize = 14f
-                setTextColor(Color.WHITE)
+                setTextColor(Color.BLACK)
+                setBackgroundColor(Color.WHITE)
                 setPadding(dp(8), dp(5), dp(5), dp(5))
                 setOnClickListener {
                     ipInput.setText(ip)
